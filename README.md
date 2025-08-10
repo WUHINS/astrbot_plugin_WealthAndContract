@@ -93,9 +93,11 @@ Astrbot/
 2. 安装依赖：`pip install -r requirements.txt`
 3. 重启AstrBot，在群聊中使用指令即可
 ## 📌 注意事项
+- 插件更新时可能连带数据文件格式一同更新，如果更新完出现报错请删除`data/plugins_WealthAndContract_data/`下的所有数据文件
 - 插件需要网络连接以获取头像和背景图片
 - 确保`data/plugins_WealthAndContract_data`目录有写入权限
 - 如果缺少字体文件，请手动添加
+- 本插件与[zgojin/astrbot_plugin_Qsign](https://github.com/zgojin/astrbot_plugin_Qsign)会产生冲突，请不要同时安装
 ## ✨ 特别鸣谢
 - 本插件基于[zgojin/astrbot_plugin_Qsign](https://github.com/zgojin/astrbot_plugin_Qsign)进行扩展开发
 - 灵感来源于[0d00-Ciallo-0721/astrbot_plugin_Astrsupermarket](https://github.com/0d00-Ciallo-0721/astrbot_plugin_Astrsupermarket)

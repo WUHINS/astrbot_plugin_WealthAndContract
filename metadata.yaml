@@ -1,5 +1,5 @@
 name: astrbot_plugin_WealthAndContract # 这是你的插件的唯一识别名。
 desc: 集签到、契约与经济系统于一体的群聊插件 # 插件简短描述
 version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
-author: HINS二改(原长安某) # 作者
+author: HINS(原长安某) # 作者
 repo: https://github.com/WUHINS/astrbot_plugin_WealthAndContract # 插件的仓库地址

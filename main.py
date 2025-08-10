@@ -275,7 +275,7 @@ WAC_LOGGER = setup_logger()
 
 @register(
     "astrbot_plugin_WealthAndContract",
-    "HINS二改(原长安某)",
+    "HINS(原长安某)",
     "集签到、契约、经济与社交系统于一体的群聊插件",
     "1.0",
     "https://github.com/WUHINS/astrbot_plugin_WealthAndContract"

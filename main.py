@@ -21,7 +21,7 @@ DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_data.yml
 PROP_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_propdata.yml')
 SOCIAL_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_social_data.yml')  # 社交数据文件
 TIME_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_time_data.yml')  # 时间数据文件
-LOG_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_operations.log')  # 操作日志文件
+LOG_DIR = os.path.join('data', 'plugins_WealthAndContract_data', 'logs')  # 日志目录
 IMAGE_DIR = os.path.join(PLUGIN_DIR, 'images')
 FONT_PATH = os.path.join(PLUGIN_DIR, '请以你的名字呼唤我.ttf')
 
@@ -48,8 +48,9 @@ WEALTH_BASE_VALUES = {
 LOTTERY_PRICE = 5.0  # 彩票价格
 LOTTERY_WIN_RATE = 0.02  # 中奖概率
 LOTTERY_MIN_PRIZE = 1500.0  # 最小奖金
-LOTTERY_MAX_PRIZE = 7000.0  # 最大奖金
+LOTTERY_MAX_PRIZE = 50000.0  # 最大奖金
 MAX_ASSETS_FOR_LOTTERY = 500.0  # 允许购买彩票的最大总资产
+MAX_LOTTERY_PER_DAY = 10  # 每天最多购买彩票次数
 
 BASE_INCOME = 100.0 #基础值
 
@@ -120,59 +121,110 @@ JOBS = {
     }
 }
 
-# 道具系统配置
+# 道具系统配置 - 新增升级关系专用礼物
 SHOP_ITEMS = {
     "驯服贴": {
         "price": 1000,
-        "description": "永久绑定性奴，防止被制裁/赎身/强制购买",
-        "max_per_user": 3,
+        "description": "永久绑定性奴，防止被制裁/赎身/强制购买，超出限定名额额外费用公式: 2000 * 2 * (当前数量 + 1)",
+        "type": "use",
         "command": "驯服贴"
     },
     "强制购买符": {
         "price": 500,
         "description": "强制购买已有主人的性奴",
+        "type": "use",
         "command": "强制购买"
     },
     "自由身保险": {
         "price": 800,
         "description": "24小时内不被购买为性奴",
         "duration_hours": 24,
+        "type": "use",
         "command": "自由身保险"
     },
     "红星制裁": {
         "price": 5,
         "description": "对全群满足条件的用户进行制裁（每人每天限用1次）",
+        "type": "use",
         "command": "红星制裁"
     },
     "市场侵袭": {
         "price": 400,
         "description": "对指定用户发起侵袭（每人每小时限用1次）",
+        "type": "use",
         "command": "市场侵袭"
     },
     "卡天亚戒指": {
         "price": 1500,
         "description": "缔结恋人关系所需的道具",
+        "type": "social",
         "command": "卡天亚戒指"
     },
     "一壶烈酒": {
         "price": 800,
         "description": "缔结兄弟关系所需的道具",
+        "type": "social",
         "command": "一壶烈酒"
     },
     "黑金卡": {
         "price": 3000,
         "description": "缔结包养关系所需的道具",
+        "type": "social",
         "command": "黑金卡"
     },
     "玫瑰花束": {
         "price": 300,
-        "description": "赠送可增加5-10点好感度",
-        "command": "赠送玫瑰花束"
+        "description": "赠送可增加5-10点好感度（基础）",
+        "type": "gift",
+        "command": "玫瑰花束"
     },
     "定制蛋糕": {
         "price": 500,
-        "description": "赠送可增加8-15点好感度",
-        "command": "赠送定制蛋糕"
+        "description": "赠送可增加8-15点好感度（基础）",
+        "type": "gift",
+        "command": "定制蛋糕"
+    },
+    "永恒钻戒": {
+        "price": 5000,
+        "description": "升级为夫妻关系所需的道具",
+        "type": "social",
+        "command": "永恒钻戒"
+    },
+    "金兰谱": {
+        "price": 3000,
+        "description": "升级为结义兄弟所需的道具",
+        "type": "social",
+        "command": "金兰谱"
+    },
+    "白金卡": {
+        "price": 8000,
+        "description": "升级为长期包养所需的道具",
+        "type": "social",
+        "command": "白金卡"
+    },
+    "限量版玫瑰": {
+        "price": 1000,
+        "description": "赠送可增加15-25点好感度（升级关系专用）",
+        "type": "gift",
+        "command": "限量版玫瑰"
+    },
+    "定制珠宝": {
+        "price": 2000,
+        "description": "赠送可增加20-35点好感度（升级关系专用）",
+        "type": "gift",
+        "command": "定制珠宝"
+    },
+    "彩票": {
+        "price": 5,
+        "description": "购买彩票，有机会获得大奖（每日限用10次）",
+        "type": "use",
+        "command": "彩票"
+    },
+    "贿赂券": {
+        "price": 300,
+        "description": "在红星制裁中免疫制裁（90%概率）",
+        "type": "use",
+        "command": "贿赂券"
     }
 }
 
@@ -222,44 +274,98 @@ DATE_EVENTS = [
     }
 ]
 
-RELATION_LEVELS = {
-    "0-19": "陌生人",
-    "20-49": "熟人",
-    "50-89": "朋友",
-    "90-99": "挚友", 
-    "100": "唯一的你",
-    "101+": "灵魂伴侣"
+# 社交系统配置 - 重构关系系统
+RELATION_LIMITS = {
+    "lover": 1,       # 恋人关系仅限1个
+    "brother": -1,    # 兄弟关系无限制
+    "patron": -1,     # 包养关系无限制
+    "spouse": 1,      # 夫妻关系仅限1个
+    "sworn_brother": -1,  # 结义兄弟无限制
+    "long_term_patron": -1 # 长期包养无限制
 }
 
-SPECIAL_RELATION_TYPES = {
-    "恋人": "lover",
-    "兄弟": "brother",
-    "包养": "patron"
+RELATION_UPGRADES = {
+    "lover": "spouse",           # 恋人可升级为夫妻
+    "brother": "sworn_brother",  # 兄弟可升级为结义兄弟
+    "patron": "long_term_patron" # 包养可升级为长期包养
 }
 
+UPGRADE_ITEMS = {
+    "spouse": "永恒钻戒",          # 升级夫妻所需道具
+    "sworn_brother": "金兰谱",    # 升级结义兄弟所需道具
+    "long_term_patron": "白金卡"   # 升级长期包养所需道具
+}
+
+UPGRADE_BONUS = {
+    "spouse": 15.0,             # 夫妻关系签到加成
+    "sworn_brother": 10.0,      # 结义兄弟签到加成
+    "long_term_patron": 20.0    # 长期包养签到加成
+}
+
+BASE_RELATION_BONUS = {
+    "lover": 5.0,
+    "brother": 3.0,
+    "patron": 8.0
+}
+
+# 关系类型名称映射
 RELATION_TYPE_NAMES = {
     "lover": "恋人",
     "brother": "兄弟", 
-    "patron": "包养关系"
+    "patron": "包养关系",
+    "spouse": "夫妻",
+    "sworn_brother": "结义兄弟",
+    "long_term_patron": "长期包养"
 }
 
-SPECIAL_RELATION_ITEMS = {
-    "恋人": "卡天亚戒指",
-    "兄弟": "一壶烈酒",
-    "包养": "黑金卡"
+# 关系礼物加成
+RELATION_GIFT_BONUS = {
+    "lover": {"玫瑰花束": (10, 15), "定制蛋糕": (15, 25)},
+    "spouse": {"限量版玫瑰": (15, 25), "定制珠宝": (20, 35)},
+    "brother": {"一壶烈酒": (8, 15)},
+    "sworn_brother": {"金兰谱": (15, 25)},
+    "patron": {"黑金卡": (10, 20)},
+    "long_term_patron": {"白金卡": (20, 30)}
 }
+
 
 # 时区配置
 SHANGHAI_TZ = pytz.timezone('Asia/Shanghai')
 
 # 配置日志
+def clean_old_logs():
+    """清理超过5天的旧日志"""
+    now = datetime.now(SHANGHAI_TZ)
+    for filename in os.listdir(LOG_DIR):
+        if filename.startswith("WAC_operations_") and filename.endswith(".log"):
+            try:
+                # 提取日期部分
+                date_str = filename[15:-4]
+                file_date = datetime.strptime(date_str, "%Y-%m-%d")
+                # 将文件日期转换为aware时间
+                file_date = SHANGHAI_TZ.localize(file_date)
+                if (now - file_date).days > 5:
+                    file_path = os.path.join(LOG_DIR, filename)
+                    os.remove(file_path)
+                    # 这里暂时不使用WAC_LOGGER
+            except Exception as e:
+                # 这里暂时不使用WAC_LOGGER
+                pass
+
+# 修改setup_logger函数，调整初始化顺序
 def setup_logger():
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    # 确保日志目录存在
+    os.makedirs(LOG_DIR, exist_ok=True)
+    
+    # 创建按日期命名的日志文件
+    today = datetime.now(SHANGHAI_TZ).strftime("%Y-%m-%d")
+    log_file = os.path.join(LOG_DIR, f"WAC_operations_{today}.log")
+    
     logger = logging.getLogger('WAC_operations')
     logger.setLevel(logging.INFO)
     
     # 创建文件处理器
-    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setLevel(logging.INFO)
     
     # 创建格式化器
@@ -268,9 +374,16 @@ def setup_logger():
     
     # 添加处理器到日志器
     logger.addHandler(file_handler)
+    
+    # 清理旧日志（保留近5天）- 现在logger已初始化
+    try:
+        clean_old_logs()
+    except Exception as e:
+        logger.error(f"清理旧日志失败: {str(e)}")
+    
     return logger
 
-# 创建全局日志对象
+# 创建全局日志对象 - 确保在函数定义后创建
 WAC_LOGGER = setup_logger()
 
 @register(
@@ -284,6 +397,14 @@ WAC_LOGGER = setup_logger()
 
 #region ==================== 数据系统 ====================
 class ContractSystem(Star):
+    RELATION_NAME_TO_TYPE = {
+        "恋人": "lover",
+        "兄弟": "brother",
+        "包养": "patron",
+        "夫妻": "spouse",
+        "结义兄弟": "sworn_brother",
+        "长期包养": "long_term_patron"
+    }
     def __init__(self, context: Context):
         super().__init__(context)
         self._init_env()
@@ -296,6 +417,7 @@ class ContractSystem(Star):
         os.makedirs(os.path.dirname(TIME_DATA_FILE), exist_ok=True)  # 时间数据目录
         os.makedirs(PLUGIN_DIR, exist_ok=True)
         os.makedirs(IMAGE_DIR, exist_ok=True)
+        os.makedirs(LOG_DIR, exist_ok=True)  # 确保日志目录存在
         
         # 清空图片目录
         self._clean_image_dir()
@@ -402,7 +524,8 @@ class ContractSystem(Star):
             "last_work": None,
             "last_red_star_use": None,
             "last_market_invasion_use": None,
-            "free_insurance_until": None
+            "free_insurance_until": None,
+            "lottery_count": 0  # 新增彩票使用计数
         })
 
     def _save_user_time_data(self, group_id: str, user_id: str, time_data: dict):
@@ -459,17 +582,6 @@ class ContractSystem(Star):
         prop_data.setdefault(group_id, {})[user_id] = props
         self._save_prop_data(prop_data)
 
-    def _get_wealth_info(self, user_data: dict) -> tuple:
-        total = user_data["coins"] + user_data.get("niuniu_coins", 0.0) + user_data["bank"]
-        for min_coin, name, rate in reversed(WEALTH_LEVELS):
-            if total >= min_coin:
-                return (name, rate)
-        return ("平民", 0.25)
-
-    def _calculate_wealth(self, user_data: dict) -> float:
-        level_name, _ = self._get_wealth_info(user_data)
-        return WEALTH_BASE_VALUES.get(level_name, 100)
-
     def _get_group_social_data(self, group_id: str) -> dict:
         """获取群组的社交数据"""
         data = self._load_social_data()
@@ -481,11 +593,15 @@ class ContractSystem(Star):
         user_id_str = str(user_id)
         
         if user_id_str not in group_data:
+            # 新的关系数据结构
             group_data[user_id_str] = {
-                "special_relations": {
-                    "lover": None,
-                    "brother": None,
-                    "patron": None
+                "relations": {  # 改为字典存储关系类型和数量
+                    "lover": [],
+                    "brother": [],
+                    "patron": [],
+                    "spouse": [],
+                    "sworn_brother": [],
+                    "long_term_patron": []
                 },
                 "favorability": {},
                 "daily_date_count": 0,
@@ -497,15 +613,15 @@ class ContractSystem(Star):
     # 社交系统核心方法
     def _get_relation_level(self, favorability: int) -> str:
         """根据好感度获取关系等级"""
-        if favorability <= 19:
+        if favorability < 20:
             return "陌生人"
-        elif favorability <= 49:
+        elif favorability < 50:
             return "熟人"
-        elif favorability <= 89:
+        elif favorability < 90:
             return "朋友"
-        elif favorability <= 99:
+        elif favorability < 100:
             return "挚友"
-        elif favorability == 100:
+        elif favorability < 500:
             return "唯一的你"
         else:
             return "灵魂伴侣"
@@ -516,9 +632,21 @@ class ContractSystem(Star):
         return user_a_data["favorability"].get(str(user_b_id), 0)
     
     def _update_favorability(self, group_id: str, user_a_id: str, user_b_id: str, change: int) -> int:
-        """更新好感度"""
+        """更新好感度（新增500点限制检查）"""
         user_a_data = self._get_user_social_data(group_id, user_a_id)
         current = user_a_data["favorability"].get(str(user_b_id), 0)
+        
+        # 检查500点限制
+        if current >= 500:
+            # 检查是否有特殊关系
+            has_relation = any(
+                str(user_b_id) in user_a_data["relations"][rel_type]
+                for rel_type in user_a_data["relations"]
+            )
+            
+            if not has_relation:
+                return current  # 达到500点且无特殊关系，不再增加
+        
         new_value = max(0, current + change)
         user_a_data["favorability"][str(user_b_id)] = new_value
         
@@ -536,12 +664,142 @@ class ContractSystem(Star):
         return new_value
     
     def get_special_relation(self, group_id: str, user_id: str, target_id: str) -> Optional[str]:
-        """获取两个用户之间的特殊关系"""
+        """获取两个用户之间的特殊关系（使用新数据结构）"""
         user_data = self._get_user_social_data(group_id, user_id)
-        for relation_type, related_id in user_data["special_relations"].items():
-            if related_id == str(target_id):
-                return RELATION_TYPE_NAMES.get(relation_type, relation_type)
+        for rel_type, targets in user_data["relations"].items():
+            if str(target_id) in targets:
+                return RELATION_TYPE_NAMES.get(rel_type, rel_type)
         return None
+
+    def can_add_relation(self, group_id: str, user_id: str, relation_type: str) -> bool:
+        """检查是否可以添加新关系"""
+        user_data = self._get_user_social_data(group_id, user_id)
+        limit = RELATION_LIMITS.get(relation_type, 0)
+        
+        if limit == -1:  # 无限制
+            return True
+        
+        current_count = len(user_data["relations"].get(relation_type, []))
+        return current_count < limit
+
+    def add_relation(self, group_id: str, user_id: str, target_id: str, relation_type: str):
+        """添加新关系"""
+        # 将中文关系类型转换为英文标识
+        if relation_type in self.RELATION_NAME_TO_TYPE:
+            relation_type = self.RELATION_NAME_TO_TYPE[relation_type]
+    
+        user_data = self._get_user_social_data(group_id, user_id)
+        target_data = self._get_user_social_data(group_id, target_id)
+    
+        # 添加到发起方
+        if str(target_id) not in user_data["relations"][relation_type]:
+            user_data["relations"][relation_type].append(str(target_id))
+    
+        # 添加到目标方
+        if str(user_id) not in target_data["relations"][relation_type]:
+            target_data["relations"][relation_type].append(str(user_id))
+        
+        # 保存数据
+        social_data = self._load_social_data()
+        social_data.setdefault(str(group_id), {})[str(user_id)] = user_data
+        social_data[str(group_id)][str(target_id)] = target_data
+        self._save_social_data(social_data)
+        
+        # 记录日志
+        self._log_operation("info", 
+            f"添加关系: group={group_id}, user={user_id}, "
+            f"target={target_id}, relation={relation_type}"
+        )
+    
+    def remove_relation(self, group_id: str, user_id: str, target_id: str, relation_type: str):
+        """移除关系"""
+        # 将中文关系类型转换为英文标识
+        if relation_type in self.RELATION_NAME_TO_TYPE:
+            relation_type = self.RELATION_NAME_TO_TYPE[relation_type]
+    
+        user_data = self._get_user_social_data(group_id, user_id)
+        target_data = self._get_user_social_data(group_id, target_id)
+    
+        # 从发起方移除
+        if str(target_id) in user_data["relations"][relation_type]:
+            user_data["relations"][relation_type].remove(str(target_id))
+    
+        # 从目标方移除
+        if str(user_id) in target_data["relations"][relation_type]:
+            target_data["relations"][relation_type].remove(str(user_id))
+        
+        # 保存数据
+        social_data = self._load_social_data()
+        social_data.setdefault(str(group_id), {})[str(user_id)] = user_data
+        social_data[str(group_id)][str(target_id)] = target_data
+        self._save_social_data(social_data)
+        
+        # 记录日志
+        self._log_operation("info", 
+            f"移除关系: group={group_id}, user={user_id}, "
+            f"target={target_id}, relation={relation_type}"
+        )
+    
+    def can_add_relation(self, group_id: str, user_id: str, relation_type: str) -> bool:
+        """检查是否可以添加新关系（处理中英文关系类型）"""
+        # 如果是中文关系类型，转换为英文标识
+        if relation_type in self.RELATION_NAME_TO_TYPE:
+            relation_type = self.RELATION_NAME_TO_TYPE[relation_type]
+    
+        user_data = self._get_user_social_data(group_id, user_id)
+        limit = RELATION_LIMITS.get(relation_type, 0)
+    
+        if limit == -1:  # 无限制
+            return True
+    
+        current_count = len(user_data["relations"].get(relation_type, []))
+        return current_count < limit
+
+    def get_upgraded_relation(self, group_id: str, user_id: str, target_id: str) -> Optional[str]:
+        """获取升级后的特殊关系"""
+        basic_relation = self.get_special_relation(group_id, user_id, target_id)
+        if basic_relation in RELATION_UPGRADES:
+            return RELATION_UPGRADES[basic_relation]
+        return None
+    
+    def get_relation_bonus(self, group_id: str, user_id: str) -> float:
+        """获取关系签到加成"""
+        user_data = self._get_user_social_data(group_id, user_id)
+        bonus = 0.0
+        
+        # 基础关系加成
+        for rel_type in BASE_RELATION_BONUS:
+            if user_data["relations"][rel_type]:
+                bonus += BASE_RELATION_BONUS[rel_type]
+        
+        # 升级关系加成
+        for rel_type in UPGRADE_BONUS:
+            if user_data["relations"][rel_type]:
+                bonus += UPGRADE_BONUS[rel_type]
+        
+        return bonus
+
+    def _get_wealth_info(self, user_data: dict) -> Tuple[str, float]:
+        """获取用户的财富等级和加成率"""
+        total_wealth = user_data["coins"] + user_data["bank"] + user_data.get("niuniu_coins", 0.0)
+        
+        # 查找匹配的财富等级
+        wealth_level = "平民"
+        wealth_rate = 0.25
+        
+        for min_coin, level, rate in WEALTH_LEVELS:
+            if total_wealth >= min_coin:
+                wealth_level = level
+                wealth_rate = rate
+            else:
+                break
+        
+        return wealth_level, wealth_rate
+
+    def _calculate_wealth(self, user_data: dict) -> float:
+        """计算用户身价（基于财富等级）"""
+        wealth_level, _ = self._get_wealth_info(user_data)
+        return WEALTH_BASE_VALUES.get(wealth_level, 100)
 #endregion
 
 #region ==================== 契约系统 ====================
@@ -554,7 +812,7 @@ class ContractSystem(Star):
         if msg.startswith("购买"):
             target_id = self._parse_at_target(event)
             if not target_id:
-                yield event.plain_result("❌ 请@要购买的对象")
+                yield event.plain_result("❌ 请@要购买的对象哦~杂鱼酱❤~")
                 return
             async for result in self._handle_hire(event, group_id, user_id, target_id):
                 yield result
@@ -563,7 +821,7 @@ class ContractSystem(Star):
         elif msg.startswith("出售"):
             target_id = self._parse_at_target(event)
             if not target_id:
-                yield event.plain_result("❌ 请@要出售的对象")
+                yield event.plain_result("❌ 请@要出售的对象哦~杂鱼酱❤~")
                 return
             async for result in self._handle_sell(event, group_id, user_id, target_id):
                 yield result
@@ -591,39 +849,39 @@ class ContractSystem(Star):
                 remaining = insurance_time - datetime.now(SHANGHAI_TZ)
                 hours = int(remaining.total_seconds() // 3600)
                 minutes = int((remaining.total_seconds() % 3600) // 60)
-                yield event.plain_result(f"❌ {target_name} 有自由身保险，剩余 {hours}小时{minutes}分钟 内不可购买")
+                yield event.plain_result(f"❌ {target_name} 有自由身保险，剩余 {hours}小时{minutes}分钟 内不可购买哦~杂鱼酱❤~")
                 return
         
         # 检查目标是否是用户自己
         if employer_id == target_id:
-            yield event.plain_result("不能购买自己哦~")
+            yield event.plain_result("❌ 不能购买自己哦~杂鱼酱❤~")
             return
 
         # 检查目标是否是机器人本身
         if target_id == event.get_self_id():
-            yield event.plain_result("妹妹是天，妹妹最大，妹妹不能买")
+            yield event.plain_result("❌ 杂鱼酱❤~妹妹是天，妹妹最大，妹妹不能买")
             return
             
         # 检查目标用户是否有主人
         if target_user["contracted_by"] is not None:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 已有主人，无法购买")
+            yield event.plain_result(f"❌ {target_name} 已有主人，无法购买哦~杂鱼酱❤~")
             return
 
         # 检查目标用户是否是自己的主人
         if employer.get("contracted_by") == target_id:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ 你不能购买自己的主人 {target_name}")
+            yield event.plain_result(f"❌ 你不能购买自己的主人 {target_name}哦~杂鱼酱❤~")
             return
     
         # 原有检查...
         if len(employer["contractors"]) >= 100:
-            yield event.plain_result("❌ 已达最大购买数量（100人）")
+            yield event.plain_result("❌ 已达最大购买数量（100人）了哦~杂鱼酱❤~")
             return
         
         cost = self._calculate_wealth(target_user)
         if employer["coins"] < cost:
-            yield event.plain_result(f"❌ 需要支付目标身价：{cost}金币")
+            yield event.plain_result(f"❌ 需要支付目标身价：{cost}金币哦~杂鱼酱❤~")
             return
 
         employer["coins"] -= cost
@@ -649,14 +907,14 @@ class ContractSystem(Star):
             self._log_operation("error", f"购买性奴保存数据失败: {str(e)}")
         
         target_name = await self._get_at_user_name(event, target_id)
-        yield event.plain_result(f"✅ 成功购买 {target_name}，消耗{cost}金币")
+        yield event.plain_result(f"✅ 杂鱼酱❤~你成功购买 {target_name}了，消耗{cost}金币")
 
     async def _handle_sell(self, event, group_id, employer_id, target_id):
         employer = self._get_user_data(group_id, employer_id)
         target_user = self._get_user_data(group_id, target_id)
 
         if target_id not in employer["contractors"]:
-            yield event.plain_result("❌ 目标不在你的性奴列表中")
+            yield event.plain_result("❌ 目标不在你的性奴列表中哦~杂鱼酱❤~")
             return
 
         sell_price = self._calculate_wealth(target_user) * 0.2
@@ -694,10 +952,10 @@ class ContractSystem(Star):
         
         # 在结果中添加提示
         target_name = await self._get_at_user_name(event, target_id)
-        result = f"✅ 成功出售性奴，获得{sell_price:.1f}金币"
+        result = f"✅ 杂鱼酱❤~你成功出售性奴了呢，获得{sell_price:.1f}金币"
         if is_permanent:
             result += "\n⚠️ 注意: 已解除永久绑定关系"
-        yield event.plain_result(result)
+        yield event.chain_result([Plain(text=result)])
 
     async def _get_at_user_name(self, event, target_id: str) -> str:
         try:
@@ -720,6 +978,67 @@ class ContractSystem(Star):
             self._log_operation("warning", f"获取用户名失败: {target_id} - {str(e)}")
             return "神秘用户"
 
+    @command("赎身")
+    @event_message_type(EventMessageType.GROUP_MESSAGE)
+    async def terminate_contract(self, event: AstrMessageEvent):
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        user_data = self._get_user_data(group_id, user_id)
+    
+        # 新增：检查是否为永久绑定
+        if user_data.get("is_permanent", False):
+            yield event.chain_result([Plain(text="❌ 您已被主人永久绑定，无法赎身哦~杂鱼酱❤~")])
+            return
+    
+        if not user_data["contracted_by"]:
+            yield event.chain_result([Plain(text="❌ 您暂无契约在身哦~大笨蛋杂鱼酱❤~")])
+            return
+
+        # 计算基础身价
+        base_cost = self._calculate_wealth(user_data)
+        # 赎身费用 = 1.5倍身价
+        cost = base_cost * 1.5
+    
+        if user_data["coins"] < cost:
+            yield event.chain_result([Plain(text=f"❌ 需要支付赎身费用：{cost:.1f}金币 (1.5倍身价)哦~杂鱼酱❤~")])
+            return
+
+        employer_id = user_data["contracted_by"]
+        employer = self._get_user_data(group_id, employer_id)
+        if user_id in employer["contractors"]:
+            employer["contractors"].remove(user_id)
+    
+        user_data["contracted_by"] = None
+        user_data["coins"] -= cost
+    
+        # 保存数据
+        try:
+            # 保存主数据
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+            group_data = data.setdefault(group_id, {})
+            group_data[user_id] = user_data
+            group_data[employer_id] = employer
+            self._save_data(data)
+            
+            # 记录日志
+            self._log_operation("info", 
+                f"赎身: group={group_id}, user={user_id}, "
+                f"employer={employer_id}, cost={cost}"
+            )
+        except Exception as e:
+            self._log_operation("error", f"赎身保存数据失败: {str(e)}")
+    
+        # 显示基础身价和实际支付金额
+        yield event.chain_result([Plain(
+            text=f"✅ 诶呀~杂鱼酱赎身成功了呢❤~\n"
+                f"- 基础身价: {base_cost:.1f}金币\n"
+                f"- 赎身费用: {cost:.1f}金币 (1.5倍)\n"
+                f"- 剩余金币: {user_data['coins']:.1f}"
+        )])
+#endregion
+
+#region ==================== 资产系统 ====================
     # 新增打劫命令
     @command("打劫")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
@@ -728,7 +1047,7 @@ class ContractSystem(Star):
         # 解析@的目标用户
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要打劫的对象")
+            yield event.plain_result("❌ 请@要打劫的对象哦~杂鱼酱❤~")
             return
             
         group_id = str(event.message_obj.group_id)
@@ -741,13 +1060,13 @@ class ContractSystem(Star):
         
         # 检查打劫者金币是否足够
         if robber_data["coins"] < 100:
-            yield event.plain_result("❌ 你连100金币都没有，还学人打劫？")
+            yield event.plain_result("❌ 你这个杂鱼❤~~连100金币都没有，还学人打劫吗❤~")
             return
             
         # 检查目标金币是否足够
         if target_data["coins"] < 100:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 还是个穷光蛋，放过他吧")
+            yield event.plain_result(f"❌ {target_name} 还是个穷光蛋，放过他吧~杂鱼酱❤~来满足下妹妹我的需求好不好啊❤~")
             return
             
         # 检查冷却时间
@@ -756,7 +1075,7 @@ class ContractSystem(Star):
             last_robbery = SHANGHAI_TZ.localize(datetime.fromisoformat(time_data["last_robbery"]))
             if (now - last_robbery) < timedelta(minutes=60):
                 remaining = 60 - int((now - last_robbery).total_seconds() / 60)
-                yield event.plain_result(f"❌ 打劫太频繁了，请等待{remaining}分钟后再试")
+                yield event.plain_result(f"❌ 打劫太频繁了，请等待{remaining}分钟后再试哦~杂鱼酱❤~")
                 return
                 
         # 检查是否是自己的性奴
@@ -806,7 +1125,7 @@ class ContractSystem(Star):
             except Exception as e:
                 self._log_operation("error", f"打劫保存数据失败: {str(e)}")
                 
-            yield event.plain_result(f"✅ 打劫成功！{robber_name} 从 {target_name} 那里抢到了 {amount} 金币")
+            yield event.plain_result(f"✅ 杂鱼酱❤打劫成功了呢！{robber_name} 从 {target_name} 那里抢到了 {amount} 金币")
         else:
             # 打劫失败
             # 随机扣除1-100金币
@@ -840,99 +1159,39 @@ class ContractSystem(Star):
             except Exception as e:
                 self._log_operation("error", f"打劫保存数据失败: {str(e)}")
                 
-            yield event.plain_result(f"❌ 打劫失败！{robber_name} 被警察抓住，罚款 {penalty} 金币")
+            yield event.plain_result(f"❌ 打劫失败！{robber_name} 被警察抓住，罚款 {penalty} 金币，真是笨呢~杂鱼酱❤~")
 
-    @command("赎身")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def terminate_contract(self, event: AstrMessageEvent):
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-        user_data = self._get_user_data(group_id, user_id)
-    
-        # 新增：检查是否为永久绑定
-        if user_data.get("is_permanent", False):
-            yield event.chain_result([Plain(text="❌ 您已被主人永久绑定，无法赎身")])
-            return
-    
-        if not user_data["contracted_by"]:
-            yield event.chain_result([Plain(text="❌ 您暂无契约在身")])
-            return
 
-        # 计算基础身价
-        base_cost = self._calculate_wealth(user_data)
-        # 赎身费用 = 1.5倍身价
-        cost = base_cost * 1.5
-    
-        if user_data["coins"] < cost:
-            yield event.chain_result([Plain(text=f"❌ 需要支付赎身费用：{cost:.1f}金币 (1.5倍身价)")])
-            return
-
-        employer_id = user_data["contracted_by"]
-        employer = self._get_user_data(group_id, employer_id)
-        if user_id in employer["contractors"]:
-            employer["contractors"].remove(user_id)
-    
-        user_data["contracted_by"] = None
-        user_data["coins"] -= cost
-    
-        # 保存数据
-        try:
-            # 保存主数据
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f) or {}
-            group_data = data.setdefault(group_id, {})
-            group_data[user_id] = user_data
-            group_data[employer_id] = employer
-            self._save_data(data)
-            
-            # 记录日志
-            self._log_operation("info", 
-                f"赎身: group={group_id}, user={user_id}, "
-                f"employer={employer_id}, cost={cost}"
-            )
-        except Exception as e:
-            self._log_operation("error", f"赎身保存数据失败: {str(e)}")
-    
-        # 显示基础身价和实际支付金额
-        yield event.chain_result([Plain(
-            text=f"✅ 赎身成功！\n"
-                f"- 基础身价: {base_cost:.1f}金币\n"
-                f"- 赎身费用: {cost:.1f}金币 (1.5倍)\n"
-                f"- 剩余金币: {user_data['coins']:.1f}"
-        )])
-#endregion
-
-#region ==================== 资产系统 ====================
     @command("转账")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
     async def transfer(self, event: AstrMessageEvent):
         """转账给其他用户"""
         msg_parts = event.message_str.strip().split()
         if len(msg_parts) < 3:
-            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/转账 <金额> @对方")])
+            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/转账 <金额> @对方 哦~杂鱼酱❤~")])
             return
 
         try:
             amount = float(msg_parts[1])
         except ValueError:
-            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额")])
+            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额 哦~杂鱼酱❤~")])
             return
 
         if amount <= 0:
-            yield event.chain_result([Plain(text="❌ 转账金额必须大于0")])
+            yield event.chain_result([Plain(text="❌ 转账金额必须大于0 哦~杂鱼酱❤~")])
             return
 
         # 获取转账目标
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.chain_result([Plain(text="❌ 请@转账对象")])
+            yield event.chain_result([Plain(text="❌ 请@转账对象哦~杂鱼酱❤~")])
             return
 
         group_id = str(event.message_obj.group_id)
         sender_id = str(event.get_sender_id())
 
         if sender_id == target_id:
-            yield event.chain_result([Plain(text="❌ 不能转账给自己")])
+            yield event.chain_result([Plain(text="❌ 不能转账给自己哦~大笨蛋杂鱼酱❤~")])
             return
 
         # 获取双方数据
@@ -945,7 +1204,7 @@ class ContractSystem(Star):
 
         # 检查发送方是否有足够资金（包括手续费）
         if sender_data["coins"] < total_deduct:
-            yield event.chain_result([Plain(text=f"❌ 现金不足（含手续费），需要 {total_deduct:.1f}金币，当前现金: {sender_data['coins']:.1f}金币")])
+            yield event.chain_result([Plain(text=f"❌ 现金不足（含手续费），需要 {total_deduct:.1f}金币，当前现金: {sender_data['coins']:.1f}金币哦~杂鱼酱❤~")])
             return
 
         # 执行转账（扣除金额+手续费）
@@ -978,82 +1237,25 @@ class ContractSystem(Star):
 
         # 通知双方
         yield event.chain_result([Plain(
-            text=f"✅ 转账成功！\n"
+            text=f"✅ 杂鱼酱❤转账成功了呢！\n"
                  f"- {sender_name} → {target_name}\n"
                  f"- 金额: {amount:.1f}金币\n"
                  f"- 手续费: {fee:.1f}金币\n"
                  f"- 你的现金余额: {sender_data['coins']:.1f}金币"
         )])
 
-    @command("签到买彩票")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def buy_lottery(self, event: AstrMessageEvent):
-        """购买彩票"""
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-        user_data = self._get_user_data(group_id, user_id)
-    
-        # 检查性奴数量是否超过限制
-        if len(user_data["contractors"]) >= 3:
-            yield event.chain_result([Plain(text="❌ 拥有3个或以上性奴的用户禁止购买彩票")])
-            return
-    
-        # 计算总资产（现金+银行+牛牛金币）
-        total_assets = user_data["coins"] + user_data["bank"] + user_data.get("niuniu_coins", 0.0)
-    
-        # 检查总资产是否超过限制
-        if total_assets > MAX_ASSETS_FOR_LOTTERY:
-            yield event.chain_result([Plain(text=f"❌ 总资产超过{MAX_ASSETS_FOR_LOTTERY}金币，禁止购买彩票")])
-            return
-    
-        # 检查现金是否足够
-        if user_data["coins"] < LOTTERY_PRICE:
-            yield event.chain_result([Plain(text=f"❌ 现金不足，需要{LOTTERY_PRICE}金币购买彩票")])
-            return
-    
-        # 扣除彩票费用
-        user_data["coins"] -= LOTTERY_PRICE
-    
-        # 随机决定是否中奖
-        if random.random() < LOTTERY_WIN_RATE:
-            # 中奖，随机生成奖金金额
-            prize = random.uniform(LOTTERY_MIN_PRIZE, LOTTERY_MAX_PRIZE)
-            user_data["coins"] += prize
-            result_msg = f"🎉 恭喜中奖！获得 {prize:.1f} 金币！"
-        else:
-            result_msg = "😢 很遗憾，没有中奖"
-    
-        # 保存数据
-        try:
-            # 保存主数据
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f) or {}
-            group_data = data.setdefault(group_id, {})
-            group_data[user_id] = user_data
-            self._save_data(data)
-            
-            # 记录日志
-            self._log_operation("info", 
-                f"购买彩票: group={group_id}, user={user_id}, "
-                f"prize={prize if '中奖' in result_msg else 0}"
-            )
-        except Exception as e:
-            self._log_operation("error", f"彩票保存数据失败: {str(e)}")
-    
-        yield event.chain_result([Plain(text=f"✅ 购买彩票成功（花费{LOTTERY_PRICE}金币）\n{result_msg}")])
-
     @command("存款")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
     async def deposit(self, event: AstrMessageEvent):
         msg_parts = event.message_str.strip().split()
         if len(msg_parts) < 2:
-            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/存款 <金额>")])
+            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/存款 <金额> 哦~杂鱼酱❤~")])
             return
         
         try:
             amount = float(msg_parts[1])
         except ValueError:
-            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额")])
+            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额哦~杂鱼酱❤~")])
             return
 
         group_id = str(event.message_obj.group_id)
@@ -1061,14 +1263,14 @@ class ContractSystem(Star):
         user_data = self._get_user_data(group_id, user_id)
         
         if amount <= 0:
-            yield event.chain_result([Plain(text="❌ 存款金额必须大于0")])
+            yield event.chain_result([Plain(text="❌ 存款金额必须大于0 哦~杂鱼酱❤~")])
             return
         
         # 计算可用总额（本插件金币 + 牛牛插件金币）
         total_available = user_data["coins"] + user_data.get("niuniu_coins", 0.0)
         
         if amount > total_available:
-            yield event.chain_result([Plain(text="❌ 可用金币不足")])
+            yield event.chain_result([Plain(text="❌ 可用金币不足哦~杂鱼酱❤~")])
             return
         
         # 优先使用本插件的金币
@@ -1115,20 +1317,20 @@ class ContractSystem(Star):
         except Exception as e:
             self._log_operation("error", f"存款保存数据失败: {str(e)}")
         
-        yield event.chain_result([Plain(text=f"✅ 成功存入 {amount:.1f} 金币")])
+        yield event.chain_result([Plain(text=f"✅ 杂鱼酱❤成功存入 {amount:.1f} 金币了呢")])
 
     @command("取款")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
     async def withdraw(self, event: AstrMessageEvent):
         msg_parts = event.message_str.strip().split()
         if len(msg_parts) < 2:
-            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/取款 <金额>")])
+            yield event.chain_result([Plain(text="❌ 格式错误，请使用：/取款 <金额> 哦~杂鱼酱❤~")])
             return
         
         try:
             amount = float(msg_parts[1])
         except ValueError:
-            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额")])
+            yield event.chain_result([Plain(text="❌ 请输入有效的数字金额哦~杂鱼酱❤~")])
             return
 
         group_id = str(event.message_obj.group_id)
@@ -1136,11 +1338,11 @@ class ContractSystem(Star):
         user_data = self._get_user_data(group_id, user_id)
         
         if amount <= 0:
-            yield event.chain_result([Plain(text="❌ 取款金额必须大于0")])
+            yield event.chain_result([Plain(text="❌ 取款金额必须大于0 哦~杂鱼酱❤~")])
             return
         
         if amount > user_data["bank"]:
-            yield event.chain_result([Plain(text="❌ 银行存款不足")])
+            yield event.chain_result([Plain(text="❌ 银行存款不足哦~杂鱼酱❤~")])
             return
         
         user_data["bank"] -= amount
@@ -1163,7 +1365,7 @@ class ContractSystem(Star):
         except Exception as e:
             self._log_operation("error", f"取款保存数据失败: {str(e)}")
         
-        yield event.chain_result([Plain(text=f"✅ 成功取出 {amount:.1f} 金币")])
+        yield event.chain_result([Plain(text=f"✅ 杂鱼酱❤成功取出 {amount:.1f} 金币了呢")])
 
     @command("资产核查")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
@@ -1172,7 +1374,7 @@ class ContractSystem(Star):
         # 解析@的目标用户
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要查询的用户")
+            yield event.plain_result("❌ 请@要查询的用户哦~杂鱼酱❤~")
             return
     
         group_id = str(event.message_obj.group_id)
@@ -1363,15 +1565,26 @@ class ContractSystem(Star):
     @command("签到帮助")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
     async def show_help(self, event: AstrMessageEvent):
-        """显示财富与契约插件帮助菜单"""
-        help_text = """
-📊 财富与契约插件使用帮助 📊
+        """显示财富与契约插件帮助菜单（分页）"""
+        parts = event.message_str.strip().split()
+        page = 1
+        if len(parts) >= 2:
+            try:
+                page = int(parts[1])
+            except ValueError:
+                pass
+        
+        # 所有帮助条目
+        help_pages = [
+            """
+📊 财富与契约插件使用帮助 - 第1页 📊
 
 【核心功能】
 /签到
 - 每日签到获得金币奖励
 - 连续签到有额外奖励
 - 银行利息每日1%
+- 特殊关系提供额外加成（恋人+5%，夫妻+15%等）
 
 /签到查询
 - 查看当前签到状态
@@ -1391,17 +1604,16 @@ class ContractSystem(Star):
 - 收取10%手续费
 - 示例: /转账 200 @用户
 
-/签到买彩票
-- 花费5金币购买彩票
-- 2%中奖概率，奖金1500-7000金币
-- 总资产超过500金币禁止购买
-- 拥有3个或以上性奴禁止购买
-
 /金币排行榜
 - 显示本群金币总资产前10名用户
 
 /性奴排行榜
 - 显示本群拥有性奴数量前10名用户
+
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip(),
+            """
+📊 财富与契约插件使用帮助 - 第2页 📊
 
 【契约系统】
 购买@用户
@@ -1427,6 +1639,11 @@ class ContractSystem(Star):
 /赎身
 - 支付1.5倍身价解除契约关系
 
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip(),
+            """
+📊 财富与契约插件使用帮助 - 第3页 📊
+
 【打工系统】
 /打工 工作名 @用户
 - 让性奴打工赚钱
@@ -1451,6 +1668,11 @@ class ContractSystem(Star):
 - 查询用户的资产详情（现金、银行、牛牛金币）
 - 显示财富等级信息
 
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip(),
+            """
+📊 财富与契约插件使用帮助 - 第4页 📊
+
 【道具系统】
 /签到商店
 - 查看可购买的道具列表
@@ -1461,42 +1683,38 @@ class ContractSystem(Star):
 /签到商店购买 <道具名> [数量]
 - 购买道具
 
-/道具驯服贴 @用户
-- 永久绑定性奴（需拥有该性奴）
+/道具 使用 <道具名> [@目标]
+- 使用道具（如驯服贴、强制购买符等）
 
-/道具强制购买 @用户
-- 强制购买已有主人的性奴
+/道具 赠送 <道具名> @用户
+- 赠送礼物道具（增加好感度）
 
-/道具自由身保险
-- 激活24小时自由身保护
-
-/道具红星制裁
-- 对全群高资产/多性奴用户进行制裁（每天限用1次）
-- 效果：75%概率使目标损失10-50%资产并出逃1-5个非永久性奴
-- 使用条件：自身资产≤2000且性奴≤5
-
-/道具市场侵袭 @用户
-- 对指定用户发起侵袭掠夺（每小时限用1次）
-- 效果：60%胜率，获胜掠夺10-30%资产+1-3个非永久性奴
-- 失败则损失15-35%资产并失去1-3个非永久性奴
-- 使用条件：双方资产>2000或性奴>5
-
-【社交系统】  # 新增社交系统
+【社交系统】  
 /约会@对方
 - 向其他用户发起约会邀请
-- 每日最多可发起3次约会
+- 每日最多可发起10次约会
+- 好感度达到500点后需建立特殊关系才能继续提升
 
-/同意约会
-- 同意对方的约会邀请
-- 约会过程中会触发随机事件影响双方好感度
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip(),
+            """
+📊 财富与契约插件使用帮助 - 第5页 📊
 
+【社交系统】(续)
 /缔结关系@对方 关系类型
 - 与对方缔结特殊关系（恋人、兄弟、包养）
-- 需要双方好感度达到100点
+- 需要双方好感度达到500点
 - 需要特定道具：
   - 恋人：卡天亚戒指
   - 兄弟：一壶烈酒
   - 包养：黑金卡
+
+/升级关系@对方
+- 升级现有关系（如恋人->夫妻）
+- 需要特定道具：
+  - 夫妻：永恒钻戒
+  - 结义兄弟：金兰谱
+  - 长期包养：白金卡
 
 /解除关系@对方
 - 解除与对方的特殊关系
@@ -1505,23 +1723,34 @@ class ContractSystem(Star):
 /查看关系@对方
 - 查看你与对方的关系状态
 
-/社交网络
-- 查看你的社交关系网络（按好感度排序）
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip(),
+            """
+📊 财富与契约插件使用帮助 - 第6页 📊
 
-/赠送礼物@对方 礼物名
-- 赠送礼物增加好感度
-- 可用礼物：
-  - 玫瑰花束：增加5-10点好感度
-  - 定制蛋糕：增加8-15点好感度
+【彩票系统】
+- 在商店购买彩票道具
+- 使用命令: /道具 使用 彩票
+- 每人每天最多使用10次
+- 2%中奖概率，奖金1500-50000金币
+- 总资产超过500金币禁止购买
+- 拥有3个或以上性奴禁止购买
 
 【其他命令】
-/签到帮助
-- 显示此帮助菜单
-
 /牛牛菜单
--牛牛插件帮助菜单
-        """.strip()
-    
+- 牛牛插件帮助菜单
+
+使用 /签到帮助 <页码> 查看更多帮助
+            """.strip()
+        ]
+        
+        total_pages = len(help_pages)
+        if page < 1 or page > total_pages:
+            page = 1
+        
+        help_text = help_pages[page-1]
+        help_text += f"\n\n📄 第 {page}/{total_pages} 页"
+        
         yield event.chain_result([Plain(text=help_text)])
 #endregion
 
@@ -1854,13 +2083,13 @@ class ContractSystem(Star):
         # 解析消息：/打工 工作类型 @目标
         parts = event.message_str.strip().split()
         if len(parts) < 2:
-            yield event.plain_result("❌ 格式错误，请使用：/打工 工作类型 @目标")
+            yield event.plain_result("❌ 格式错误，请使用：/打工 工作类型 @目标 哦~杂鱼酱❤~")
             return
         
         # 解析目标用户
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要打工的对象")
+            yield event.plain_result("❌ 请@要打工的对象哦~杂鱼酱❤~")
             return
         
         job_name = parts[1]
@@ -1881,7 +2110,7 @@ class ContractSystem(Star):
         # 检查是否是自己的性奴
         if target_id not in employer_data["contractors"]:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 不是你的性奴，无法让其打工")
+            yield event.plain_result(f"❌ {target_name} 不是你的性奴，无法让其打工哦~杂鱼酱❤~")
             return
         
         # 检查冷却时间（每小时只能打工一次）
@@ -1891,7 +2120,7 @@ class ContractSystem(Star):
             if (now - last_work) < timedelta(hours=1):
                 remaining_minutes = 60 - int((now - last_work).total_seconds() / 60)
                 target_name = await self._get_at_user_name(event, target_id)
-                yield event.plain_result(f"❌ {target_name} 需要休息，请等待{remaining_minutes}分钟后再来打工")
+                yield event.plain_result(f"❌ {target_name} 需要休息，请等待{remaining_minutes}分钟后再来打工，你个黑心杂鱼酱❤~")
                 return
         
         # 获取工作信息
@@ -1901,7 +2130,7 @@ class ContractSystem(Star):
         if job["risk_cost"][1] > 0:  # 有失败惩罚的工作
             max_risk = job["risk_cost"][1]
             if employer_data["coins"] < max_risk:
-                yield event.plain_result(f"❌ 雇主金币不足，无法支付可能的最大惩罚（{max_risk}金币）")
+                yield event.plain_result(f"❌ 雇主金币不足，无法支付可能的最大惩罚（{max_risk}金币），穷鬼杂鱼酱❤~")
                 return
         
         # 执行打工
@@ -1927,7 +2156,7 @@ class ContractSystem(Star):
             # 确保有足够的金币支付风险
             if employer_data["coins"] < risk_cost:
                 # 如果余额不足，不允许打工
-                yield event.plain_result(f"❌ 雇主金币不足，无法支付可能的惩罚（{risk_cost:.1f}金币）")
+                yield event.plain_result(f"❌ 雇主金币不足，无法支付可能的惩罚（{risk_cost:.1f}金币），穷鬼杂鱼酱❤~")
                 return
             
             employer_data["coins"] -= risk_cost
@@ -1999,7 +2228,7 @@ class ContractSystem(Star):
         # 解析消息：/一键打工 工作名
         parts = event.message_str.strip().split()
         if len(parts) < 2:
-            yield event.plain_result("❌ 格式错误，请使用：/一键打工 工作名")
+            yield event.plain_result("❌ 格式错误，请使用：/一键打工 工作名 哦~杂鱼酱❤~")
             return
         
         job_name = parts[1]
@@ -2015,7 +2244,7 @@ class ContractSystem(Star):
         
         # 检查是否有性奴
         if not employer_data["contractors"]:
-            yield event.plain_result("❌ 您还没有性奴，无法使用一键打工")
+            yield event.plain_result("❌ 您还没有性奴，无法使用一键打工哦~杂鱼酱❤~")
             return
         
         # 获取工作信息
@@ -2024,7 +2253,7 @@ class ContractSystem(Star):
         # 检查雇主是否有足够金币支付可能的最大惩罚（如果工作有失败惩罚）
         max_risk = job["risk_cost"][1] if job["risk_cost"][1] > 0 else 0
         if max_risk > 0 and employer_data["coins"] < max_risk * len(employer_data["contractors"]):
-            yield event.plain_result(f"❌ 雇主金币不足，无法支付所有性奴可能的最大惩罚（{max_risk * len(employer_data['contractors'])}金币）")
+            yield event.plain_result(f"❌ 雇主金币不足，无法支付所有性奴可能的最大惩罚（{max_risk * len(employer_data['contractors'])}金币），穷鬼杂鱼酱❤~")
             return
         
         # 执行批量打工
@@ -2209,7 +2438,7 @@ class ContractSystem(Star):
             status_text = "自由民"
             status_color = "#228B22"  # 森林绿
             
-        draw.text((100, 140), f"状态: {status_text}", font=status_font, fill=status_color)
+        draw.text((800, 120), f"状态: {status_text}", font=status_font, fill=status_color)
     
         # 主人信息面板
         master_panel = create_rounded_panel((900, 80), (255, 240, 245, 200))  # 浅粉色
@@ -2259,7 +2488,7 @@ class ContractSystem(Star):
             
             # 添加永久绑定标记
             if is_permanent:
-                draw.text((700, y_position + 8), "🔒永久", font=list_font, fill="#FF0000")  # 红色永久标记
+                draw.text((700, y_position + 8), "💞永久", font=list_font, fill="#FF0000")  # 红色永久标记
         
             y_position += 45
     
@@ -2385,7 +2614,7 @@ class ContractSystem(Star):
         })
     
         # 构建响应消息
-        response = f"📋 {target_name} 的详细契约信息：\n\n"
+        response = f"📋 杂鱼酱❤{target_name} 的详细契约信息：\n\n"
         response += f"- QQ: {target_id}\n"
         response += f"- 财富等级: {wealth_level} (加成率: {wealth_rate*100:.0f}%)\n"
         response += f"- 总资产: {total_wealth:.1f}金币\n"
@@ -2423,7 +2652,7 @@ class ContractSystem(Star):
         if time_data["last_sign"]:
             last_sign = SHANGHAI_TZ.localize(datetime.fromisoformat(time_data["last_sign"]))
             if last_sign.date() == today:
-                yield event.chain_result([Plain(text="❌ 今日已签到，请明天再来！")])
+                yield event.chain_result([Plain(text="❌ 今日已签到，请明天再来光顾妹妹我哦~杂鱼酱❤~")])
                 return
 
         interest = user_data["bank"] * 0.01
@@ -2444,12 +2673,24 @@ class ContractSystem(Star):
             self._get_wealth_info(self._get_user_data(group_id, c))[1]
             for c in user_data["contractors"]
         )
+        
+        # 计算性奴的性奴加成（50%）
+        sub_contractor_rates = 0
+        for cid in user_data["contractors"]:
+            contractor_data = self._get_user_data(group_id, cid)
+            for sub_cid in contractor_data["contractors"]:
+                sub_contractor = self._get_user_data(group_id, sub_cid)
+                _, rate = self._get_wealth_info(sub_contractor)
+                sub_contractor_rates += rate * 0.5  # 50%加成
     
         # 计算连签奖励
         consecutive_bonus = 10 * (user_data["consecutive"] - 1)  
     
+        # 计算特殊关系加成
+        relation_bonus = self.get_relation_bonus(group_id, user_id)
+        
         # 计算签到收益
-        earned = BASE_INCOME * (1 + user_wealth_rate) * (1 + contractor_rates) + consecutive_bonus
+        earned = BASE_INCOME * (1 + user_wealth_rate) * (1 + contractor_rates + sub_contractor_rates) + consecutive_bonus + relation_bonus
 
         user_data["coins"] += earned
         time_data["last_sign"] = now.replace(tzinfo=None).isoformat()
@@ -2469,12 +2710,13 @@ class ContractSystem(Star):
             # 记录日志
             self._log_operation("info", 
                 f"签到: group={group_id}, user={user_id}, "
-                f"earned={earned}, consecutive={user_data['consecutive']}"
+                f"earned={earned}, consecutive={user_data['consecutive']}, "
+                f"relation_bonus={relation_bonus}"
             )
         except Exception as e:
             self._log_operation("error", f"签到保存数据失败: {str(e)}")
     
-        # 生成签到卡片（不再检查制裁）
+        # 生成签到卡片
         card_path = await self._generate_card(
             event=event,
             user_id=user_id,
@@ -2487,9 +2729,11 @@ class ContractSystem(Star):
             interest=interest,
             earned=earned,
             group_id=group_id,
-            is_query=False
+            is_query=False,
+            relation_bonus=relation_bonus  # 新增关系加成显示
         )
         yield event.chain_result([Image.fromFileSystem(card_path)])
+
 
     @command("签到查询")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
@@ -2497,27 +2741,35 @@ class ContractSystem(Star):
         group_id = str(event.message_obj.group_id)
         user_id = str(event.get_sender_id())
         user_data = self._get_user_data(group_id, user_id)
-        
-        # 获取用户自身身份的加成
+    
+        # 获取用户财富信息
         user_wealth_level, user_wealth_rate = self._get_wealth_info(user_data)
-        
+    
         # 计算契约收益加成
-        contractor_rates = sum(
-            self._get_wealth_info(self._get_user_data(group_id, c))[1]
-            for c in user_data["contractors"]
-        )
-        
+        contractor_rates = 0.0
+        for cid in user_data["contractors"]:
+            try:
+                contractor_data = self._get_user_data(group_id, cid)
+                _, rate = self._get_wealth_info(contractor_data)
+                contractor_rates += rate
+            except:
+                continue
+    
         # 计算连签奖励
         consecutive_bonus = 10 * user_data["consecutive"]
-        
+    
+        # 计算特殊关系加成
+        relation_bonus = self.get_relation_bonus(group_id, user_id)
+    
         # 计算预期收益
-        earned = BASE_INCOME * (1 + user_wealth_rate) * (1 + contractor_rates) + consecutive_bonus
+        earned = BASE_INCOME * (1 + user_wealth_rate) * (1 + contractor_rates) + consecutive_bonus + relation_bonus
 
+        # 生成签到卡片
         card_path = await self._generate_card(
             event=event,
             user_id=user_id,
             user_name=event.get_sender_name(),
-            coins=user_data["coins"] + user_data.get("niuniu_coins", 0.0),  # 显示总额
+            coins=user_data["coins"] + user_data.get("niuniu_coins", 0.0),
             bank=user_data["bank"],
             consecutive=user_data["consecutive"],
             contractors=user_data["contractors"],
@@ -2526,7 +2778,8 @@ class ContractSystem(Star):
             earned=earned,
             group_id=group_id,
             is_query=True,
-            user_wealth_rate=user_wealth_rate
+            user_wealth_rate=user_wealth_rate,
+            relation_bonus=relation_bonus
         )
         yield event.chain_result([Image.fromFileSystem(card_path)])
 
@@ -2641,13 +2894,17 @@ class ContractSystem(Star):
             consecutive_bonus = 10 * data['consecutive']  # 显示明日可得的连签奖励
             tomorrow_interest = data["bank"] * 0.01
             
-            total = base_with_bonus + contract_bonus + consecutive_bonus + tomorrow_interest
+            total = base_with_bonus + contract_bonus + consecutive_bonus + tomorrow_interest + data['relation_bonus']
             lines = [
                 f"{total:.1f} 金币",
-                f"基础{base_with_bonus:.1f}+契约{contract_bonus:.1f}+连签{consecutive_bonus:.1f}+利息{tomorrow_interest:.1f}"
+                f"基础{base_with_bonus:.1f}+契约{contract_bonus:.1f}+连签{consecutive_bonus:.1f}+利息{tomorrow_interest:.1f}+关系{data['relation_bonus']:.1f}"
             ]
+            
+            # 添加彩票预估收益
+            if data.get('lottery_earned', 0) > 0:
+                lines.append(f"彩票预估收益: {data['lottery_earned']:.1f}金币")
         else:
-            lines = [f"{data['earned']:.1f}（含利息{data['interest']:.1f}）"]
+            lines = [f"{data['earned']:.1f}（含利息{data['interest']:.1f} + 关系加成{data['relation_bonus']:.1f}）"]
         start_y = panel_y + 50
         for i, line in enumerate(lines):
             text_bbox = detail_font.getbbox(line)
@@ -2761,7 +3018,7 @@ class ContractSystem(Star):
             shop_text += f"- 描述: {details['description']}\n"
             shop_text += f"- 购买命令: /签到商店购买 {item} [数量]\n\n"
         
-        shop_text += "📦 查看背包: /签到背包"
+        shop_text += "🎒 查看背包: /签到背包"
         yield event.chain_result([Plain(text=shop_text)])
 
     @command("签到商店购买")
@@ -2770,7 +3027,7 @@ class ContractSystem(Star):
         """购买商店道具"""
         parts = event.message_str.strip().split()
         if len(parts) < 2:
-            yield event.chain_result([Plain(text="❌ 格式错误，请使用: /签到商店购买 道具名 [数量]")])
+            yield event.chain_result([Plain(text="❌ 格式错误，请使用: /签到商店购买 道具名 [数量] 哦~大笨蛋杂鱼酱❤~")])
             return
         
         item_name = parts[1]
@@ -2779,10 +3036,10 @@ class ContractSystem(Star):
             try:
                 quantity = int(parts[2])
                 if quantity <= 0:
-                    yield event.chain_result([Plain(text="❌ 购买数量必须大于0")])
+                    yield event.chain_result([Plain(text="❌ 购买数量必须大于0哦~杂鱼酱❤~")])
                     return
             except ValueError:
-                yield event.chain_result([Plain(text="❌ 无效的数量")])
+                yield event.chain_result([Plain(text="❌ 无效的数量哦~杂鱼酱❤~")])
                 return
         
         if item_name not in SHOP_ITEMS:
@@ -2798,19 +3055,9 @@ class ContractSystem(Star):
         # 检查金币是否足够
         if user_data["coins"] < total_cost:
             yield event.chain_result([Plain(
-                text=f"❌ 金币不足! 需要 {total_cost} 金币, 当前金币: {user_data['coins']:.1f}"
+                text=f"❌ 金币不足! 需要 {total_cost} 金币, 当前金币: {user_data['coins']:.1f}，穷鬼杂鱼酱❤~"
             )])
             return
-        
-        # 检查特殊限制 (如驯服贴最多3个)
-        if item_name == "驯服贴":
-            # 检查永久绑定数量限制
-            permanent_count = len(user_data.get("permanent_contractors", []))
-            if permanent_count >= SHOP_ITEMS["驯服贴"]["max_per_user"]:
-                yield event.chain_result([Plain(
-                    text=f"❌ 已达最大永久绑定数量 ({SHOP_ITEMS['驯服贴']['max_per_user']}个)"
-                )])
-                return
         
         # 扣除金币
         user_data["coins"] -= total_cost
@@ -2823,6 +3070,7 @@ class ContractSystem(Star):
         
         # 保存金币数据
         try:
+            # 保存主数据
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
             group_data = data.setdefault(group_id, {})
@@ -2839,10 +3087,10 @@ class ContractSystem(Star):
             return
         
         yield event.chain_result([Plain(
-            text=f"✅ 购买成功! 获得 {quantity} 个 {item_name}\n"
+            text=f"🎒 杂鱼酱❤~购买成功了呢! 获得 {quantity} 个 {item_name}\n"
                  f"- 花费: {total_cost} 金币\n"
                  f"- 当前拥有: {user_props[item_name]} 个\n"
-                 f"- 使用命令: /道具{item_info['command']} [@目标]"
+                 f"- 使用命令: /道具 <使用|赠送> {item_info['command']} [@目标]"
         )])
 
     @command("签到背包")
@@ -2861,28 +3109,100 @@ class ContractSystem(Star):
         for item, quantity in user_props.items():
             if item in SHOP_ITEMS:
                 prop_text += f"- {item}: {quantity} 个\n"
-                prop_text += f"  使用命令: /道具{SHOP_ITEMS[item]['command']} [@目标]\n"
+                prop_text += f"  使用命令: /道具 <使用|赠送> {SHOP_ITEMS[item]['command']} [@目标]\n"
         
         yield event.chain_result([Plain(text=prop_text)])
 
     # 道具使用命令
-    @command("道具驯服贴")
+    @command("道具")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def use_tame_sticker(self, event: AstrMessageEvent):
-        """使用驯服贴永久绑定性奴"""
-        # 解析@的目标用户
-        target_id = self._parse_at_target(event)
-        if not target_id:
-            yield event.plain_result("❌ 请@要绑定的对象")
+    async def use_prop(self, event: AstrMessageEvent):
+        """使用道具"""
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用: /道具 <使用|赠送> <道具名> [@目标] 哦~大笨蛋杂鱼酱❤~")
             return
-            
+        
+        action = parts[1]
+        if action not in ["使用", "赠送"]:
+            yield event.plain_result("❌ 无效操作，可用操作: 使用, 赠送")
+            return
+        
+        if len(parts) < 3:
+            yield event.plain_result("❌ 请指定道具名哦~大笨蛋杂鱼酱❤~")
+            return
+        
+        prop_name = parts[2]
+        if prop_name not in SHOP_ITEMS:
+            yield event.plain_result(f"❌ 未知道具: {prop_name}")
+            return
+        
         group_id = str(event.message_obj.group_id)
         user_id = str(event.get_sender_id())
         
+        # 获取道具信息
+        prop_info = SHOP_ITEMS[prop_name]
+        
+        # 检查道具类型
+        if action == "使用" and prop_info["type"] != "use":
+            yield event.plain_result(f"❌ {prop_name} 不能直接使用哦~大笨蛋杂鱼酱❤~")
+            return
+            
+        if action == "赠送" and prop_info["type"] != "gift":
+            yield event.plain_result(f"❌ {prop_name} 不能赠送哦~大笨蛋杂鱼酱❤~")
+            return
+        
+        # 解析目标用户
+        target_id = None
+        if len(parts) >= 4:
+            # 尝试解析@的目标
+            target_id = self._parse_at_target(event)
+        
+        # 对于某些道具，目标用户是必需的
+        if prop_name in ["驯服贴", "强制购买符", "市场侵袭"]:
+            if not target_id:
+                yield event.plain_result(f"❌ 请@要使用 {prop_name} 的目标哦~杂鱼酱❤~")
+                return
+        
+        # 根据道具类型调用相应的处理函数
+        if action == "使用":
+            if prop_name == "驯服贴":
+                async for result in self._use_tame_sticker(event, group_id, user_id, target_id):
+                    yield result
+            elif prop_name == "强制购买符":
+                async for result in self._use_force_buy(event, group_id, user_id, target_id):
+                    yield result
+            elif prop_name == "自由身保险":
+                async for result in self._use_freedom_insurance(event, group_id, user_id):
+                    yield result
+            elif prop_name == "红星制裁":
+                async for result in self._use_red_star_sanction(event, group_id, user_id):
+                    yield result
+            elif prop_name == "市场侵袭":
+                async for result in self._use_market_invasion(event, group_id, user_id, target_id):
+                    yield result
+            elif prop_name == "彩票":
+                async for result in self._use_lottery(event, group_id, user_id):
+                    yield result
+            elif prop_name == "贿赂券":
+                # 贿赂券不需要目标
+                async for result in self._use_bribe(event, group_id, user_id):
+                    yield result
+            else:
+                yield event.plain_result(f"❌ 未实现的道具: {prop_name}")
+        elif action == "赠送":
+            if not target_id:
+                yield event.plain_result(f"❌ 请@要赠送 {prop_name} 的对象哦~杂鱼酱❤~")
+                return
+            async for result in self._give_gift(event, group_id, user_id, target_id, prop_name):
+                yield result
+
+    async def _use_tame_sticker(self, event, group_id, user_id, target_id):
+        """使用驯服贴永久绑定性奴"""
         # 获取用户道具
         user_props = self._get_user_props(group_id, user_id)
         if "驯服贴" not in user_props or user_props["驯服贴"] < 1:
-            yield event.plain_result("❌ 您没有驯服贴")
+            yield event.plain_result("❌ 您没有驯服贴哦~杂鱼酱❤~")
             return
         
         # 获取用户数据
@@ -2892,19 +3212,33 @@ class ContractSystem(Star):
         # 检查目标是否已经是自己的性奴
         if target_id not in user_data["contractors"]:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 不是你的性奴")
+            yield event.plain_result(f"❌ {target_name} 不是你的性奴哦~杂鱼酱❤~")
             return
         
         # 检查永久绑定数量限制
         permanent_contractors = user_data.get("permanent_contractors", [])
-        if len(permanent_contractors) >= SHOP_ITEMS["驯服贴"]["max_per_user"]:
-            yield event.plain_result(f"❌ 已达最大永久绑定数量 ({SHOP_ITEMS['驯服贴']['max_per_user']}个)")
-            return
+        current_count = len(permanent_contractors)
+        extra_cost = 0
+        
+        # 如果已有3个永久性奴，计算额外费用
+        if current_count >= 3:
+            # 额外费用公式: 2000 * 2 * (当前数量 + 1)
+            # 例如: 第4个永久性奴: 2000*2*4= 4000
+            #       第5个永久性奴: 2000*2*5 = 8000
+            extra_cost = 2000 * 2 * (current_count + 1)
+            
+            # 检查用户金币是否足够
+            if user_data["coins"] < extra_cost:
+                yield event.plain_result(
+                    f"❌ 超出永久性奴数量限制，需要额外支付 {extra_cost} 金币\n"
+                    f"当前永久性奴数量: {current_count}/3"
+                )
+                return
         
         # 检查目标是否已被永久绑定
         if target_id in permanent_contractors:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 已被永久绑定")
+            yield event.plain_result(f"❌ {target_name} 已被永久绑定了哦~杂鱼酱❤~")
             return
         
         # 添加永久绑定
@@ -2918,6 +3252,10 @@ class ContractSystem(Star):
         user_props["驯服贴"] -= 1
         if user_props["驯服贴"] <= 0:
             del user_props["驯服贴"]
+        
+        # 扣除额外费用（如果有）
+        if extra_cost > 0:
+            user_data["coins"] -= extra_cost
         
         # 保存数据
         try:
@@ -2935,33 +3273,27 @@ class ContractSystem(Star):
             # 记录日志
             self._log_operation("info", 
                 f"使用驯服贴: group={group_id}, user={user_id}, "
-                f"target={target_id}"
+                f"target={target_id}, extra_cost={extra_cost}"
             )
         except Exception as e:
             self._log_operation("error", f"驯服贴保存数据失败: {str(e)}")
         
         target_name = await self._get_at_user_name(event, target_id)
-        yield event.plain_result(f"✅ 成功永久绑定 {target_name}！\n"
-                                 f"- 该性奴不会被制裁、赎身或强制购买\n"
-                                 f"- 剩余驯服贴: {user_props.get('驯服贴', 0)}")
-
-    @command("道具强制购买")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def use_force_buy(self, event: AstrMessageEvent):
-        """使用强制购买符购买已有主人的性奴"""
-        # 解析@的目标用户
-        target_id = self._parse_at_target(event)
-        if not target_id:
-            yield event.plain_result("❌ 请@要购买的对象")
-            return
-            
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
+        result = f"✅ 杂鱼酱❤~成功永久绑定 {target_name}！\n"
+        result += f"- 该性奴不会被制裁、赎身或强制购买\n"
+        result += f"- 剩余驯服贴: {user_props.get('驯服贴', 0)}"
         
+        if extra_cost > 0:
+            result += f"\n⚠️ 超出数量限制，额外扣除 {extra_cost} 金币"
+            
+        yield event.plain_result(result)
+
+    async def _use_force_buy(self, event, group_id, user_id, target_id):
+        """使用强制购买符购买已有主人的性奴"""
         # 获取用户道具
         user_props = self._get_user_props(group_id, user_id)
         if "强制购买符" not in user_props or user_props["强制购买符"] < 1:
-            yield event.plain_result("❌ 您没有强制购买符")
+            yield event.plain_result("❌ 您没有强制购买符哦~杂鱼酱❤~")
             return
         
         # 获取用户数据
@@ -2971,13 +3303,13 @@ class ContractSystem(Star):
         # 检查目标是否已被永久绑定
         if target_data.get("is_permanent", False):
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 已被永久绑定，无法强制购买")
+            yield event.plain_result(f"❌ {target_name} 已被永久绑定，无法强制购买哦~杂鱼酱❤~")
             return
         
         # 检查目标是否有主人
         if not target_data["contracted_by"]:
             target_name = await self._get_at_user_name(event, target_id)
-            yield event.plain_result(f"❌ {target_name} 没有主人，请直接购买")
+            yield event.plain_result(f"❌ {target_name} 没有主人，请直接购买哦~杂鱼酱❤~")
             return
         
         # 计算目标身价
@@ -2985,7 +3317,7 @@ class ContractSystem(Star):
         
         # 检查金币是否足够
         if employer_data["coins"] < cost:
-            yield event.plain_result(f"❌ 需要支付目标身价：{cost}金币")
+            yield event.plain_result(f"❌ 需要支付目标身价：{cost}金币哦~穷鬼杂鱼酱❤~")
             return
         
         # 获取原主人数据
@@ -3039,19 +3371,14 @@ class ContractSystem(Star):
         
         yield event.plain_result(f"⚡ 强制购买成功! {new_owner_name} 从 {original_owner_name} 处抢走了 {target_name}\n"
                                  f"- 支付身价: {cost}金币\n"
-                                 f"- 剩余强制购买符: {user_props.get('强制购买符', 0)}")
+                                 f"- 剩余强制购买符: {user_props.get('强制购买', 0)}")
 
-    @command("道具自由身保险")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def use_freedom_insurance(self, event: AstrMessageEvent):
+    async def _use_freedom_insurance(self, event, group_id, user_id):
         """使用自由身保险"""
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-        
         # 获取用户道具
         user_props = self._get_user_props(group_id, user_id)
         if "自由身保险" not in user_props or user_props["自由身保险"] < 1:
-            yield event.plain_result("❌ 您没有自由身保险")
+            yield event.plain_result("❌ 您没有自由身保险哦~杂鱼酱❤~")
             return
         
         # 获取用户数据
@@ -3060,7 +3387,7 @@ class ContractSystem(Star):
         
         # 新增：检查用户是否是性奴（有主人）
         if user_data["contracted_by"] is not None:
-            yield event.plain_result("❌ 您已是性奴，不能使用自由身保险")
+            yield event.plain_result("❌ 您已是性奴，不能使用自由身保险哦~性奴杂鱼酱❤~")
             return
         
         # 检查是否已有保险
@@ -3105,17 +3432,12 @@ class ContractSystem(Star):
                                  f"- 在此期间您不会被购买为性奴\n"
                                  f"- 剩余自由身保险: {user_props.get('自由身保险', 0)}")
     
-    @command("道具红星制裁")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def use_red_star_sanction(self, event: AstrMessageEvent):
+    async def _use_red_star_sanction(self, event, group_id, user_id):
         """使用红星制裁道具"""
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-
         # 获取用户道具
         user_props = self._get_user_props(group_id, user_id)
         if "红星制裁" not in user_props or user_props["红星制裁"] < 1:
-            yield event.plain_result("❌ 您没有红星制裁道具")
+            yield event.plain_result("❌ 您没有红星制裁道具哦~杂鱼酱❤~")
             return
 
         # 获取用户数据和时间数据
@@ -3128,7 +3450,7 @@ class ContractSystem(Star):
 
         # 检查使用者是否满足制裁条件
         if total_assets > 2000 or contractor_count > 5:
-            yield event.plain_result("❌ 您自身已满足制裁条件，无法使用红星制裁")
+            yield event.plain_result("❌ 您自身已满足制裁条件，无法使用红星制裁哦~杂鱼酱❤~")
             return
 
         # 检查冷却时间（每天限用一次）
@@ -3137,7 +3459,7 @@ class ContractSystem(Star):
         if time_data.get(last_use_key):
             last_use = SHANGHAI_TZ.localize(datetime.fromisoformat(time_data[last_use_key]))
             if last_use.date() == now.date():
-                yield event.plain_result("❌ 今天已使用过红星制裁，请明天再来")
+                yield event.plain_result("❌ 今天已使用过红星制裁，请明天再来哦~杂鱼酱❤~")
                 return
 
         # 加载全群数据
@@ -3166,6 +3488,22 @@ class ContractSystem(Star):
 
             # 检查是否满足制裁条件
             if u_total_assets > 2000 or u_contractor_count > 5:
+                # 检查目标是否有贿赂券
+                target_props = self._get_user_props(group_id, uid)
+                if "贿赂券" in target_props and target_props["贿赂券"] > 0 and random.random() < 0.90:
+                    # 使用贿赂券免疫制裁
+                    target_props["贿赂券"] -= 1
+                    if target_props["贿赂券"] <= 0:
+                        del target_props["贿赂券"]
+                    self._update_user_props(group_id, uid, target_props)
+                    
+                    try:
+                        user_name = await self._get_at_user_name(event, uid)
+                        sanction_results.append(f"🛡️ {user_name} 使用了贿赂券，免疫了红星制裁！")
+                    except:
+                        sanction_results.append(f"🛡️ 用户{uid[-4:]} 使用了贿赂券，免疫了红星制裁！")
+                    continue
+                
                 # 75%概率触发制裁
                 if random.random() < 0.75:
                     # 性奴制裁（非永久绑定的）
@@ -3282,23 +3620,12 @@ class ContractSystem(Star):
 
         yield event.plain_result(response)
 
-    @command("道具市场侵袭")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def use_market_invasion(self, event: AstrMessageEvent):
+    async def _use_market_invasion(self, event, group_id, user_id, target_id):
         """使用市场侵袭道具"""
-        # 解析@的目标用户
-        target_id = self._parse_at_target(event)
-        if not target_id:
-            yield event.plain_result("❌ 请@要侵袭的对象")
-            return
-
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-
         # 获取用户道具
         user_props = self._get_user_props(group_id, user_id)
         if "市场侵袭" not in user_props or user_props["市场侵袭"] < 1:
-            yield event.plain_result("❌ 您没有市场侵袭道具")
+            yield event.plain_result("❌ 您没有市场侵袭道具哦~杂鱼酱❤~")
             return
 
         # 获取用户数据和时间数据
@@ -3515,6 +3842,140 @@ class ContractSystem(Star):
         response += f"\n💼 {target_name} 当前资产: {target_data['coins'] + target_data['bank']:.1f}金币"
 
         yield event.plain_result(response)
+
+    async def _use_lottery(self, event, group_id, user_id):
+        """使用彩票道具"""
+        # 获取用户道具
+        user_props = self._get_user_props(group_id, user_id)
+        if "彩票" not in user_props or user_props["彩票"] < 1:
+            yield event.plain_result("❌ 您没有彩票哦~杂鱼酱❤~")
+            return
+
+        # 获取时间数据
+        time_data = self._get_user_time_data(group_id, user_id)
+        now = datetime.now(SHANGHAI_TZ)
+        today = now.date()
+    
+        # 检查是否是新的自然日
+        if time_data.get("last_lottery_date") != today.isoformat():
+            time_data["lottery_count"] = 0
+            time_data["last_lottery_date"] = today.isoformat()
+    
+        # 检查每日使用次数
+        if time_data.get("lottery_count", 0) >= MAX_LOTTERY_PER_DAY:
+            yield event.plain_result(f"❌ 今天已经使用了{MAX_LOTTERY_PER_DAY}次彩票，请明天再来哦~杂鱼酱❤~")
+            return
+        
+        # 获取用户数据
+        user_data = self._get_user_data(group_id, user_id)
+        
+        # 检查性奴数量是否超过限制
+        if len(user_data["contractors"]) >= 3:
+            yield event.chain_result([Plain(text="❌ 拥有3个或以上性奴的用户禁止使用彩票哦~杂鱼酱❤~")])
+            return
+    
+        # 计算总资产（现金+银行+牛牛金币）
+        total_assets = user_data["coins"] + user_data["bank"] + user_data.get("niuniu_coins", 0.0)
+    
+        # 检查总资产是否超过限制
+        if total_assets > MAX_ASSETS_FOR_LOTTERY:
+            yield event.chain_result([Plain(text=f"❌ 总资产超过{MAX_ASSETS_FOR_LOTTERY}金币，禁止使用彩票哦~杂鱼酱❤~")])
+            return
+
+        # 执行彩票开奖
+        is_win = random.random() < LOTTERY_WIN_RATE
+        
+        if is_win:
+            # 中奖，随机生成奖金金额
+            prize = random.uniform(LOTTERY_MIN_PRIZE, LOTTERY_MAX_PRIZE)
+            user_data["coins"] += prize
+            result_msg = f"🎉 恭喜中奖！获得 {prize:.1f} 金币！"
+        else:
+            result_msg = "😢 很遗憾，没有中奖"
+        
+        # 更新彩票计数
+        time_data["lottery_count"] = time_data.get("lottery_count", 0) + 1
+        
+        # 扣除道具
+        user_props["彩票"] -= 1
+        if user_props["彩票"] <= 0:
+            del user_props["彩票"]
+        
+        # 保存数据
+        try:
+            # 保存道具数据
+            self._update_user_props(group_id, user_id, user_props)
+            
+            # 保存主数据
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+            group_data = data.setdefault(group_id, {})
+            group_data[user_id] = user_data
+            self._save_data(data)
+            
+            # 保存时间数据
+            self._save_user_time_data(group_id, user_id, time_data)
+            
+            # 记录日志
+            self._log_operation("info", 
+                f"使用彩票: group={group_id}, user={user_id}, "
+                f"prize={prize if is_win else 0}"
+            )
+        except Exception as e:
+            self._log_operation("error", f"彩票保存数据失败: {str(e)}")
+    
+        yield event.plain_result(f"✅ 使用彩票成功\n{result_msg}\n今日剩余彩票次数: {MAX_LOTTERY_PER_DAY - time_data['lottery_count']}")
+
+    async def _use_bribe(self, event, group_id, user_id):
+        """使用贿赂券（不需要目标）"""
+        # 获取用户道具
+        user_props = self._get_user_props(group_id, user_id)
+        if "贿赂券" not in user_props or user_props["贿赂券"] < 1:
+            yield event.plain_result("❌ 您没有贿赂券")
+            return
+        
+        # 只是提示，实际使用在红星制裁中处理
+        yield event.plain_result("🛡️ 贿赂券已准备就绪！当您成为红星制裁目标时，有75%概率自动使用并免疫制裁")
+
+    async def _give_gift(self, event, group_id, user_id, target_id, gift_name):
+        """赠送礼物增加好感度（新增关系加成）"""
+        # 获取用户道具
+        user_props = self._get_user_props(group_id, user_id)
+        if gift_name not in user_props or user_props[gift_name] < 1:
+            yield event.plain_result(f"❌ 您没有{gift_name}，请先在商店购买哦~杂鱼酱❤~")
+            return
+        
+        # 获取关系类型
+        relation_type = self.get_special_relation(group_id, user_id, target_id)
+        
+        # 确定好感度增加值（根据关系类型）
+        min_gain, max_gain = 5, 10
+        if relation_type:
+            gift_bonus = RELATION_GIFT_BONUS.get(relation_type, {}).get(gift_name)
+            if gift_bonus:
+                min_gain, max_gain = gift_bonus
+        
+        favorability_gain = random.randint(min_gain, max_gain)
+        
+        # 更新好感度
+        new_favorability = self._update_favorability(group_id, target_id, user_id, favorability_gain)
+        
+        # 扣除道具
+        user_props[gift_name] -= 1
+        if user_props[gift_name] <= 0:
+            del user_props[gift_name]
+        self._update_user_props(group_id, user_id, user_props)
+        
+        # 记录日志
+        self._log_operation("info", 
+            f"赠送礼物: group={group_id}, from={user_id}, "
+            f"to={target_id}, gift={gift_name}, "
+            f"favorability_gain={favorability_gain}"
+        )
+        
+        target_name = await self._get_at_user_name(event, target_id)
+        yield event.plain_result(f"🎁 你向 {target_name} 赠送了{gift_name}，TA对你的好感度增加了{favorability_gain}点！\n当前好感度: {new_favorability}")
+
 #endregion
 
 #region ==================== 社交系统 ====================
@@ -3524,7 +3985,7 @@ class ContractSystem(Star):
         """发起约会邀请"""
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要约会的对象")
+            yield event.plain_result("❌ 请@要约会的对象哦~杂鱼酱❤~")
             return
         
         group_id = str(event.message_obj.group_id)
@@ -3532,12 +3993,12 @@ class ContractSystem(Star):
         
         # 检查是否是自己
         if user_id == target_id:
-            yield event.plain_result("不能和自己约会哦~")
+            yield event.plain_result("❌ 不能和自己约会哦~杂鱼酱❤~")
             return
         
         # 检查是否是机器人
         if target_id == event.get_self_id():
-            yield event.plain_result("抱歉，我现在很忙，没有时间约会~")
+            yield event.plain_result("抱歉，我现在很忙，没有时间约会哦~杂鱼酱❤~")
             return
         
         # 检查每日约会次数
@@ -3548,8 +4009,8 @@ class ContractSystem(Star):
             user_data["daily_date_count"] = 0
             user_data["last_date_date"] = today
         
-        if user_data["daily_date_count"] >= 3:
-            yield event.plain_result("你今天已经约会3次了，请明天再来~")
+        if user_data["daily_date_count"] >= 10:
+            yield event.plain_result("你今天已经约会10次了，请明天再来哦~杂鱼酱❤~")
             return
         
         # 创建约会邀请
@@ -3583,7 +4044,7 @@ class ContractSystem(Star):
         
         # 获取邀请
         if group_id_str not in self.active_invitations or user_id not in self.active_invitations[group_id_str]:
-            yield event.plain_result("❌ 没有待处理的约会邀请")
+            yield event.plain_result("❌ 没有待处理的约会邀请哦~杂鱼酱❤~")
             return
         
         invitation = self.active_invitations[group_id_str][user_id]
@@ -3591,7 +4052,7 @@ class ContractSystem(Star):
         # 检查邀请是否过期
         if datetime.now(SHANGHAI_TZ) - invitation['created_at'] > timedelta(seconds=60):
             del self.active_invitations[group_id_str][user_id]
-            yield event.plain_result("❌ 约会邀请已过期")
+            yield event.plain_result("❌ 约会邀请已过期了~你来晚了路明非~你还是那个没人要的臭小孩~")
             return
         
         # 执行约会
@@ -3621,46 +4082,57 @@ class ContractSystem(Star):
         yield event.plain_result(response)
 
     async def _run_date(self, group_id: str, user_a_id: str, user_b_id: str, user_a_name: str, user_b_name: str) -> dict:
-        """执行约会流程"""
+        """执行约会流程（添加500点好感度限制）"""
+        # 初始化事件结果列表
+        events_result = []
+    
+        # 检查双方是否已有特殊关系
+        has_relation = bool(self.get_special_relation(group_id, user_a_id, user_b_id))
+
         # 记录开始时的好感度
         a_to_b_before = self.get_favorability(group_id, user_a_id, user_b_id)
         b_to_a_before = self.get_favorability(group_id, user_b_id, user_a_id)
-        
+
         # 随机选择3个事件
         event_count = min(3, len(DATE_EVENTS))
         selected_events = random.sample(DATE_EVENTS, event_count)
-        
+
         # 累计好感度变化
         a_to_b_change = 0
         b_to_a_change = 0
-        
+
         # 处理每个事件
-        events_result = []
         for event in selected_events:
             change_min, change_max = event["favorability_change"]
             change_a = random.randint(change_min, change_max)
             change_b = random.randint(change_min, change_max)
-            
+    
+            # 添加500点好感度限制检查
+            if a_to_b_before + a_to_b_change >= 500 and not has_relation:
+                change_a = 0
+            if b_to_a_before + b_to_a_change >= 500 and not has_relation:
+                change_b = 0
+    
             a_to_b_change += change_a
             b_to_a_change += change_b
-            
+    
             events_result.append({
                 "name": event["name"],
                 "description": event["description"],
                 "a_to_b_change": change_a,
                 "b_to_a_change": change_b
             })
-        
-        # 更新好感度
+    
+        # 更新好感度（内部方法已包含500点限制）
         a_to_b_after = self._update_favorability(group_id, user_a_id, user_b_id, a_to_b_change)
         b_to_a_after = self._update_favorability(group_id, user_b_id, user_a_id, b_to_a_change)
-        
+    
         # 检查关系变化
         a_to_b_level_before = self._get_relation_level(a_to_b_before)
         a_to_b_level_after = self._get_relation_level(a_to_b_after)
         b_to_a_level_before = self._get_relation_level(b_to_a_before)
         b_to_a_level_after = self._get_relation_level(b_to_a_after)
-        
+    
         return {
             "events": events_result,
             "user_a_to_b_change": a_to_b_change,
@@ -3679,13 +4151,13 @@ class ContractSystem(Star):
         """缔结特殊关系"""
         parts = event.message_str.strip().split()
         if len(parts) < 3:
-            yield event.plain_result("❌ 格式错误，请使用：/缔结关系 @对方 关系类型")
+            yield event.plain_result("❌ 格式错误，请使用：/缔结关系 @对方 关系类型 哦~杂鱼酱❤~")
             yield event.plain_result("可用关系类型：恋人、兄弟、包养")
             return
         
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要缔结关系的对象")
+            yield event.plain_result("❌ 请@要缔结关系的对象哦~杂鱼酱❤~")
             return
         
         relation_type = parts[2]
@@ -3698,79 +4170,54 @@ class ContractSystem(Star):
         
         # 不能与自己缔结关系
         if user_id == target_id:
-            yield event.plain_result("❌ 不能与自己缔结特殊关系哦~")
+            yield event.plain_result("❌ 不能与自己缔结特殊关系哦~大笨蛋杂鱼酱❤~")
             return
-        
+          
         # 获取好感度
         user_to_target = self.get_favorability(group_id, user_id, target_id)
         target_to_user = self.get_favorability(group_id, target_id, user_id)
         
         # 检查好感度是否足够
         if relation_type == "包养":
-            if target_to_user < 100:
-                yield event.plain_result(f"❌ 对方对你的好感度不足，需要达到100点才能被包养。当前好感度: {target_to_user}")
+            if target_to_user < 500:
+                yield event.plain_result(f"❌ 对方对你的好感度不足，需要达到500点才能被包养。当前好感度: {target_to_user}")
                 return
         else:
-            if user_to_target < 100:
-                yield event.plain_result(f"❌ 你对对方的好感度不足，需要达到100点。当前好感度: {user_to_target}")
+            if user_to_target < 500:
+                yield event.plain_result(f"❌ 你对对方的好感度不足，需要达到500点。当前好感度: {user_to_target}")
                 return
-            if target_to_user < 100:
-                yield event.plain_result(f"❌ 对方对你的好感度不足，需要达到100点。当前好感度: {target_to_user}")
+            if target_to_user < 500:
+                yield event.plain_result(f"❌ 对方对你的好感度不足，需要达到500点。当前好感度: {target_to_user}")
                 return
         
         # 检查所需道具
-        required_item = SPECIAL_RELATION_ITEMS.get(relation_type)
-        if not required_item:
-            yield event.plain_result(f"❌ 无效的关系类型: {relation_type}")
-            return
+        required_item = ""
+        if relation_type == "恋人":
+            required_item = "卡天亚戒指"
+        elif relation_type == "兄弟":
+            required_item = "一壶烈酒"
+        elif relation_type == "包养":
+            required_item = "黑金卡"
         
         # 检查用户是否拥有所需道具
         user_props = self._get_user_props(group_id, user_id)
         if required_item not in user_props or user_props[required_item] < 1:
-            yield event.plain_result(f"❌ 缔结{relation_type}关系需要{required_item}，你还没有这个道具！")
+            yield event.plain_result(f"❌ 缔结{relation_type}关系需要{required_item}，你还没有这个道具！杂鱼酱❤")
             return
         
-        # 获取用户数据
-        user_data = self._get_user_social_data(group_id, user_id)
-        target_data = self._get_user_social_data(group_id, target_id)
-        
-        # 检查关系是否已被占用
-        internal_type = SPECIAL_RELATION_TYPES[relation_type]
-        if user_data["special_relations"][internal_type] is not None:
-            yield event.plain_result(f"❌ 你已经有一个'{relation_type}'关系了，请先解除现有关系。")
-            return
-          
-        if target_data["special_relations"][internal_type] is not None:
-            yield event.plain_result(f"❌ 对方已经有一个'{relation_type}'关系了，无法与你缔结。")
-            return
-        
-        # 检查两人之间是否已经有其他特殊关系
-        existing_relation = self.get_special_relation(group_id, user_id, target_id)
-        if existing_relation:
-            yield event.plain_result(f"❌ 你们之间已经有'{existing_relation}'关系了，不能再缔结其他特殊关系。")
+        # 检查关系数量限制
+        if not self.can_add_relation(group_id, user_id, relation_type):
+            yield event.plain_result(f"❌ 您已达到{relation_type}关系的数量上限哦~杂鱼酱❤~")
             return
         
         # 缔结关系
-        user_data["special_relations"][internal_type] = target_id
-        target_data["special_relations"][internal_type] = user_id
-        
-        # 解锁好感度上限
-        if self.get_favorability(group_id, user_id, target_id) == 100:
-            self._update_favorability(group_id, user_id, target_id, 1)
-        if self.get_favorability(group_id, target_id, user_id) == 100:
-            self._update_favorability(group_id, target_id, user_id, 1)
+        self.add_relation(group_id, user_id, target_id, relation_type)
         
         # 扣除道具
         user_props[required_item] -= 1
         if user_props[required_item] <= 0:
             del user_props[required_item]
         self._update_user_props(group_id, user_id, user_props)
-        
-        # 保存社交数据
-        social_data = self._load_social_data()
-        social_data.setdefault(str(group_id), {})[user_id] = user_data
-        social_data[str(group_id)][target_id] = target_data
-        self._save_social_data(social_data)
         
         # 记录日志
         self._log_operation("info", 
@@ -3781,13 +4228,80 @@ class ContractSystem(Star):
         target_name = await self._get_at_user_name(event, target_id)
         yield event.plain_result(f"✅ 恭喜！你与 {target_name} 成功缔结'{relation_type}'关系！\n- 消耗道具: {required_item}")
 
+    @command("升级关系")
+    @event_message_type(EventMessageType.GROUP_MESSAGE)
+    async def upgrade_relationship(self, event: AstrMessageEvent):
+        """升级特殊关系"""
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用：/升级关系 @对方 哦~杂鱼酱❤~")
+            return
+        
+        target_id = self._parse_at_target(event)
+        if not target_id:
+            yield event.plain_result("❌ 请@要升级关系的对象哦~杂鱼酱❤~")
+            return
+        
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        
+        # 获取当前关系（中文）
+        current_relation_chinese = self.get_special_relation(group_id, user_id, target_id)
+        if not current_relation_chinese:
+            yield event.plain_result("❌ 你们之间没有可升级的基础关系哦~杂鱼酱❤~")
+            return
+        
+        # 将中文关系转换为英文标识
+        if current_relation_chinese in self.RELATION_NAME_TO_TYPE:
+            current_relation = self.RELATION_NAME_TO_TYPE[current_relation_chinese]
+        else:
+            yield event.plain_result(f"❌ 未知的关系类型: {current_relation_chinese}")
+            return
+        
+        # 检查是否可以升级
+        if current_relation not in RELATION_UPGRADES:
+            yield event.plain_result(f"❌ {current_relation_chinese} 关系无法升级哦~杂鱼酱❤~")
+            return
+        
+        upgraded_relation = RELATION_UPGRADES[current_relation]
+        required_item = UPGRADE_ITEMS[upgraded_relation]
+        
+        # 检查用户是否拥有所需道具
+        user_props = self._get_user_props(group_id, user_id)
+        if required_item not in user_props or user_props[required_item] < 1:
+            yield event.plain_result(f"❌ 升级关系需要{required_item}，你还没有这个道具！杂鱼酱❤")
+            return
+        
+        # 执行升级
+        # 移除旧关系（使用中文关系类型）
+        self.remove_relation(group_id, user_id, target_id, current_relation_chinese)
+        
+        # 添加新关系（使用英文标识）
+        self.add_relation(group_id, user_id, target_id, upgraded_relation)
+        
+        # 扣除道具
+        user_props[required_item] -= 1
+        if user_props[required_item] <= 0:
+            del user_props[required_item]
+        self._update_user_props(group_id, user_id, user_props)
+        
+        # 记录日志
+        self._log_operation("info", 
+            f"升级关系: group={group_id}, user={user_id}, "
+            f"target={target_id}, from={current_relation}, to={upgraded_relation}"
+        )
+        
+        target_name = await self._get_at_user_name(event, target_id)
+        new_relation_name = RELATION_TYPE_NAMES.get(upgraded_relation, upgraded_relation)
+        yield event.plain_result(f"✨ 恭喜！你与 {target_name} 的关系从 {current_relation_chinese} 升级为 {new_relation_name}！")
+
     @command("解除关系")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
     async def break_relationship(self, event: AstrMessageEvent):
         """解除特殊关系"""
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要解除关系的对象")
+            yield event.plain_result("❌ 请@要解除关系的对象哦~杂鱼酱❤~")
             return
         
         group_id = str(event.message_obj.group_id)
@@ -3795,40 +4309,21 @@ class ContractSystem(Star):
         
         # 不能与自己解除关系
         if user_id == target_id:
-            yield event.plain_result("❌ 不能与自己解除关系哦~")
+            yield event.plain_result("❌ 不能与自己解除关系哦~大笨蛋杂鱼酱❤~")
             return
           
-        # 获取用户数据
-        user_data = self._get_user_social_data(group_id, user_id)
-        target_data = self._get_user_social_data(group_id, target_id)
-        
-        # 查找关系
-        relation_type = None
-        for rel_type, rel_id in user_data["special_relations"].items():
-            if rel_id == target_id:
-                relation_type = rel_type
-                break
-          
+        # 获取当前关系
+        relation_type = self.get_special_relation(group_id, user_id, target_id)
         if not relation_type:
-            yield event.plain_result("❌ 你们之间没有特殊关系，无法解除。")
+            yield event.plain_result("❌ 你们之间没有特殊关系，无法解除哦~杂鱼酱❤~")
             return
         
         # 解除关系
-        user_data["special_relations"][relation_type] = None
-        for rel_type, rel_id in target_data["special_relations"].items():
-            if rel_id == user_id:
-                target_data["special_relations"][rel_type] = None
-                break
+        self.remove_relation(group_id, user_id, target_id, relation_type)
         
         # 重置好感度为50
         self._update_favorability(group_id, user_id, target_id, 50 - self.get_favorability(group_id, user_id, target_id))
         self._update_favorability(group_id, target_id, user_id, 50 - self.get_favorability(group_id, target_id, user_id))
-        
-        # 保存数据
-        social_data = self._load_social_data()
-        social_data.setdefault(str(group_id), {})[user_id] = user_data
-        social_data[str(group_id)][target_id] = target_data
-        self._save_social_data(social_data)
         
         # 记录日志
         self._log_operation("info", 
@@ -3836,9 +4331,8 @@ class ContractSystem(Star):
             f"target={target_id}, relation={relation_type}"
         )
         
-        relation_name = RELATION_TYPE_NAMES.get(relation_type, relation_type)
         target_name = await self._get_at_user_name(event, target_id)
-        yield event.plain_result(f"✅ 已成功解除与 {target_name} 的'{relation_name}'关系。双方好感度已重置为50。")
+        yield event.plain_result(f"✅ 已成功解除与 {target_name} 的'{relation_type}'关系。双方好感度已重置为50。")
 
     @command("查看关系")
     @event_message_type(EventMessageType.GROUP_MESSAGE)
@@ -3846,7 +4340,7 @@ class ContractSystem(Star):
         """查看两人之间的关系"""
         target_id = self._parse_at_target(event)
         if not target_id:
-            yield event.plain_result("❌ 请@要查看关系的对象")
+            yield event.plain_result("❌ 请@要查看关系的对象哦~杂鱼酱❤~")
             return
         
         group_id = str(event.message_obj.group_id)
@@ -3893,9 +4387,9 @@ class ContractSystem(Star):
         
         # 获取特殊关系
         special_relations = {}
-        for rel_type, rel_id in user_data["special_relations"].items():
-            if rel_id:
-                special_relations[rel_id] = RELATION_TYPE_NAMES.get(rel_type, rel_type)
+        for rel_type, targets in user_data["relations"].items():
+            for target_id in targets:
+                special_relations[target_id] = RELATION_TYPE_NAMES.get(rel_type, rel_type)
         
         # 构建响应
         response = "🌟 你的社交网络（按好感度排序）:\n\n"
@@ -3904,7 +4398,7 @@ class ContractSystem(Star):
                 continue
                 
             level = self._get_relation_level(favorability)
-            special_relation = special_relations.get(target_id)
+            special_relation = special_relations.get(str(target_id))
             
             try:
                 target_name = await self._get_at_user_name(event, target_id)
@@ -3918,59 +4412,4 @@ class ContractSystem(Star):
             response += relation_info + "\n"
         
         yield event.plain_result(response)
-
-    @command("赠送礼物")
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def give_gift(self, event: AstrMessageEvent):
-        """赠送礼物增加好感度"""
-        parts = event.message_str.strip().split()
-        if len(parts) < 3:
-            yield event.plain_result("❌ 格式错误，请使用：/赠送礼物 @对方 礼物名")
-            return
-        
-        target_id = self._parse_at_target(event)
-        if not target_id:
-            yield event.plain_result("❌ 请@要赠送礼物的对象")
-            return
-        
-        gift_name = parts[2]
-        if gift_name not in ["玫瑰花束", "定制蛋糕"]:
-            yield event.plain_result("❌ 无效的礼物，可用礼物：玫瑰花束、定制蛋糕")
-            return
-        
-        group_id = str(event.message_obj.group_id)
-        user_id = str(event.get_sender_id())
-        
-        # 检查用户是否拥有该礼物
-        user_props = self._get_user_props(group_id, user_id)
-        if gift_name not in user_props or user_props[gift_name] < 1:
-            yield event.plain_result(f"❌ 你没有{gift_name}，请先在商店购买")
-            return
-        
-        # 确定好感度增加值
-        if gift_name == "玫瑰花束":
-            favorability_gain = random.randint(5, 10)
-        elif gift_name == "定制蛋糕":
-            favorability_gain = random.randint(8, 15)
-        else:
-            favorability_gain = 0
-        
-        # 更新好感度
-        new_favorability = self._update_favorability(group_id, target_id, user_id, favorability_gain)
-        
-        # 扣除道具
-        user_props[gift_name] -= 1
-        if user_props[gift_name] <= 0:
-            del user_props[gift_name]
-        self._update_user_props(group_id, user_id, user_props)
-        
-        # 记录日志
-        self._log_operation("info", 
-            f"赠送礼物: group={group_id}, from={user_id}, "
-            f"to={target_id}, gift={gift_name}, "
-            f"favorability_gain={favorability_gain}"
-        )
-        
-        target_name = await self._get_at_user_name(event, target_id)
-        yield event.plain_result(f"🎁 你向 {target_name} 赠送了{gift_name}，TA对你的好感度增加了{favorability_gain}点！\n当前好感度: {new_favorability}")
 #endregion

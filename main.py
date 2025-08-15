@@ -21,7 +21,6 @@ DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_data.yml
 PROP_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_propdata.yml')
 SOCIAL_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_social_data.yml')  # 社交数据文件
 TIME_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_time_data.yml')  # 时间数据文件
-LOG_DIR = os.path.join('data', 'plugins_WealthAndContract_data', 'logs')  # 日志目录
 IMAGE_DIR = os.path.join(PLUGIN_DIR, 'images')
 FONT_PATH = os.path.join(PLUGIN_DIR, '请以你的名字呼唤我.ttf')
 
@@ -332,60 +331,6 @@ RELATION_GIFT_BONUS = {
 # 时区配置
 SHANGHAI_TZ = pytz.timezone('Asia/Shanghai')
 
-# 配置日志
-def clean_old_logs():
-    """清理超过5天的旧日志"""
-    now = datetime.now(SHANGHAI_TZ)
-    for filename in os.listdir(LOG_DIR):
-        if filename.startswith("WAC_operations_") and filename.endswith(".log"):
-            try:
-                # 提取日期部分
-                date_str = filename[15:-4]
-                file_date = datetime.strptime(date_str, "%Y-%m-%d")
-                # 将文件日期转换为aware时间
-                file_date = SHANGHAI_TZ.localize(file_date)
-                if (now - file_date).days > 5:
-                    file_path = os.path.join(LOG_DIR, filename)
-                    os.remove(file_path)
-                    # 这里暂时不使用WAC_LOGGER
-            except Exception as e:
-                # 这里暂时不使用WAC_LOGGER
-                pass
-
-# 修改setup_logger函数，调整初始化顺序
-def setup_logger():
-    # 确保日志目录存在
-    os.makedirs(LOG_DIR, exist_ok=True)
-    
-    # 创建按日期命名的日志文件
-    today = datetime.now(SHANGHAI_TZ).strftime("%Y-%m-%d")
-    log_file = os.path.join(LOG_DIR, f"WAC_operations_{today}.log")
-    
-    logger = logging.getLogger('WAC_operations')
-    logger.setLevel(logging.INFO)
-    
-    # 创建文件处理器
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setLevel(logging.INFO)
-    
-    # 创建格式化器
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    
-    # 添加处理器到日志器
-    logger.addHandler(file_handler)
-    
-    # 清理旧日志（保留近5天）- 现在logger已初始化
-    try:
-        clean_old_logs()
-    except Exception as e:
-        logger.error(f"清理旧日志失败: {str(e)}")
-    
-    return logger
-
-# 创建全局日志对象 - 确保在函数定义后创建
-WAC_LOGGER = setup_logger()
-
 @register(
     "astrbot_plugin_WealthAndContract",
     "HINS(原长安某)",
@@ -417,7 +362,6 @@ class ContractSystem(Star):
         os.makedirs(os.path.dirname(TIME_DATA_FILE), exist_ok=True)  # 时间数据目录
         os.makedirs(PLUGIN_DIR, exist_ok=True)
         os.makedirs(IMAGE_DIR, exist_ok=True)
-        os.makedirs(LOG_DIR, exist_ok=True)  # 确保日志目录存在
         
         # 清空图片目录
         self._clean_image_dir()
@@ -442,11 +386,19 @@ class ContractSystem(Star):
                     elif os.path.isdir(file_path):
                         shutil.rmtree(file_path)
                 except Exception as e:
-                    WAC_LOGGER.error(f"删除图片失败: {file_path} - {str(e)}")
+                    logger.error(f"删除图片失败: {file_path} - {str(e)}")
 
     def _log_operation(self, level: str, message: str):
         """记录操作日志"""
-        WAC_LOGGER.log(getattr(logging, level.upper(), logging.INFO), message)
+        log_level = getattr(logging, level.upper(), logging.INFO)
+        if log_level == logging.INFO:
+            logger.info(message)
+        elif log_level == logging.WARNING:
+            logger.warning(message)
+        elif log_level == logging.ERROR:
+            logger.error(message)
+        else:
+            logger.info(message)
 
     def _load_data(self):
         try:
@@ -975,7 +927,7 @@ class ContractSystem(Star):
                 return f'用户{match.group(1)[-4:]}'
             return f'用户{target_id[-4:]}'
         except Exception as e:
-            self._log_operation("warning", f"获取用户名失败: {target_id} - {str(e)}")
+            logger.warning(f"获取用户名失败: {target_id} - {str(e)}")
             return "神秘用户"
 
     @command("赎身")
@@ -3002,7 +2954,7 @@ class ContractSystem(Star):
             bordered.paste(img.resize((160,160)), (3,3), mask)
             return bordered
         except Exception as e:
-            self._log_operation("warning", f"获取头像失败: {user_id} - {str(e)}")
+            logger.warning(f"获取头像失败: {user_id} - {str(e)}")
             return None
 #endregion
 
@@ -3068,7 +3020,7 @@ class ContractSystem(Star):
         user_props[item_name] = current_count + quantity
         self._update_user_props(group_id, user_id, user_props)
         
-        # 保存金币数据
+        # 保存数据
         try:
             # 保存主数据
             with open(DATA_FILE, 'r', encoding='utf-8') as f:

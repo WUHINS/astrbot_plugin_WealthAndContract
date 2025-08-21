@@ -1,0 +1,52 @@
+{
+  "BG_API": {
+    "description": "背景图API地址",
+    "type": "string",
+    "hint": "用于生成资产卡片、契约关系卡片的背景图API",
+    "default": "https://api.fuchenboke.cn/api/dongman.php",
+    "obvious_hint": true
+  },
+  "LOTTERY_CONFIG": {
+    "description": "彩票系统配置",
+    "type": "object",
+    "hint": "彩票道具的详细配置参数",
+    "items": {
+      "win_rate": {
+        "description": "中奖概率",
+        "type": "float",
+        "hint": "中奖概率（0.0-1.0）",
+        "default": 0.02
+      },
+      "min_prize": {
+        "description": "最小奖金",
+        "type": "int",
+        "hint": "中奖时最小奖金金额（金币）",
+        "default": 1500
+      },
+      "max_prize": {
+        "description": "最大奖金",
+        "type": "int",
+        "hint": "中奖时最大奖金金额（金币）",
+        "default": 50000
+      },
+      "max_assets": {
+        "description": "最大资产限制",
+        "type": "int",
+        "hint": "允许购买彩票的最大总资产（金币）",
+        "default": 500
+      },
+      "max_use_per_day": {
+        "description": "每日使用上限",
+        "type": "int",
+        "hint": "每人每天最多使用彩票次数",
+        "default": 10
+      },
+      "max_contractors": {
+        "description": "最大性奴限制",
+        "type": "int",
+        "hint": "拥有此数量以上性奴的用户禁止购买彩票",
+        "default": 3
+      }
+    }
+  }
+}

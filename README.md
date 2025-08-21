@@ -1,6 +1,6 @@
 # 财富与契约插件 v1.3
 
-一款专为AstrBot设计的群聊插件，融合了经济系统、契约系统、道具系统、社交系统以及股票交易系统，为群聊提供丰富的互动玩法。
+一款专为[AstrBot](https://astrbot.app/)设计的群聊插件，融合了经济系统、契约系统、道具系统、社交系统以及股票交易系统，为群聊提供丰富的互动玩法。
 
 ## ✨ 核心功能简介
 
@@ -123,13 +123,13 @@ Astrbot/
    - 谨慎使用管理员命令
 
 ## 奇奇怪怪的冲突
-- 与https://github.com/Zhalslar/astrbot_plugin_image_summary同时安装可能导致插件无法发出第二张图片
+- 与[astrbot 图片外显插件](https://github.com/Zhalslar/astrbot_plugin_image_summary)同时安装可能导致插件无法发出第二张图片
 
 ## ✨ 特别鸣谢
 
-- 本插件基于https://github.com/zgojin/astrbot_plugin_Qsign进行扩展开发
-- 灵感来源于https://github.com/0d00-Ciallo-0721/astrbot_plugin_Astrsupermarket
-- 搭配https://github.com/WUHINS/astrbot_plugin_niuniu食用更佳✨
+- 本插件基于[二次元签到插件](https://github.com/zgojin/astrbot_plugin_Qsign)进行扩展开发
+- 灵感来源于[Astr超级市场](https://github.com/0d00-Ciallo-0721/astrbot_plugin_Astrsupermarket)
+- 搭配[娱乐插件](https://github.com/WUHINS/astrbot_plugin_niuniu)食用更佳✨
 
 ---
 

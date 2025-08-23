@@ -611,7 +611,7 @@ SHANGHAI_TZ = pytz.timezone('Asia/Shanghai')
     "astrbot_plugin_WealthAndContract",
     "HINS",
     "集签到、契约、经济与社交系统于一体的群聊插件",
-    "1.3",
+    "1.3.1",
     "https://github.com/WUHINS/astrbot_plugin_WealthAndContract"
 )
 #endregion
@@ -7857,7 +7857,7 @@ class ContractSystem(Star):
     async def authorize_user(self, event: AstrMessageEvent):
         """授权用户使用管理命令"""
         parts = event.message_str.strip().split()
-        if len(parts) < 3:
+        if len(parts) < 4:
             yield event.plain_result("❌ 格式错误，请使用：/WACadmin 授权 <等级> <@用户|QQ号> [群号]")
             yield event.plain_result(f"可用等级: {', '.join([f'{k}-{v}' for k, v in AUTH_LEVELS.items()])}")
             return
@@ -7866,8 +7866,8 @@ class ContractSystem(Star):
         target_id = self._parse_at_target(event)
         if not target_id:
             # 尝试解析QQ号
-            if parts[1].isdigit():
-                target_id = parts[1]
+            if parts[3].isdigit():
+                target_id = parts[3]
             else:
                 yield event.plain_result("❌ 请@用户或提供QQ号")
                 return
@@ -7884,8 +7884,8 @@ class ContractSystem(Star):
         
         # 解析群号（默认当前群）
         group_id = event.message_obj.group_id
-        if len(parts) > 3 and parts[3].isdigit():
-            group_id = int(parts[3])
+        if len(parts) > 4 and parts[4].isdigit():
+            group_id = int(parts[4])
         
         # 设置授权
         self._set_user_auth_level(group_id, target_id, auth_level)
@@ -7903,7 +7903,7 @@ class ContractSystem(Star):
     async def unauthorize_user(self, event: AstrMessageEvent):
         """取消用户管理权限"""
         parts = event.message_str.strip().split()
-        if len(parts) < 2:
+        if len(parts) < 3:
             yield event.plain_result("❌ 格式错误，请使用：/WACadmin 取消授权 <@用户|QQ号> [群号]")
             return
     
@@ -7911,16 +7911,16 @@ class ContractSystem(Star):
         target_id = self._parse_at_target(event)
         if not target_id:
             # 尝试解析QQ号
-            if parts[1].isdigit():
-                target_id = parts[1]
+            if parts[2].isdigit():
+                target_id = parts[2]
             else:
                 yield event.plain_result("❌ 请@用户或提供QQ号")
                 return
     
         # 解析群号（默认当前群）
         group_id = event.message_obj.group_id
-        if len(parts) > 2 and parts[2].isdigit():
-            group_id = int(parts[2])
+        if len(parts) > 3 and parts[3].isdigit():
+            group_id = int(parts[3])
     
         # 移除授权
         self._remove_user_auth(group_id, target_id)
@@ -8487,11 +8487,15 @@ class ContractSystem(Star):
         """拉黑群聊（拒绝响应所有请求）"""
         parts = event.message_str.strip().split()
         
-        # 解析群号（默认当前群）
+        # 默认使用当前群
         group_id = event.message_obj.group_id
-        if len(parts) > 1 and parts[1].isdigit():
+    
+        # 检查是否有群号参数
+        if len(parts) > 2 and parts[2].isdigit():
+            group_id = int(parts[2])
+        elif len(parts) > 1 and parts[1].isdigit():
             group_id = int(parts[1])
-        
+    
         group_id_str = str(group_id)
         
         # 添加群聊到黑名单
@@ -8552,11 +8556,15 @@ class ContractSystem(Star):
         """解除群聊拉黑"""
         parts = event.message_str.strip().split()
         
-        # 解析群号（默认当前群）
+        # 默认使用当前群
         group_id = event.message_obj.group_id
-        if len(parts) > 1 and parts[1].isdigit():
+    
+        # 检查是否有群号参数
+        if len(parts) > 2 and parts[2].isdigit():
+            group_id = int(parts[2])
+        elif len(parts) > 1 and parts[1].isdigit():
             group_id = int(parts[1])
-        
+    
         group_id_str = str(group_id)
         
         # 从黑名单中移除群聊

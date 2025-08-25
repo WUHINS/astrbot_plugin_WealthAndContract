@@ -24,18 +24,28 @@ from typing import Dict, Any, Optional, List, Tuple
 #region ==================== 插件配置 ====================
 #免责声明：代码中的称呼与词汇为娱乐性质，不涉及政治等敏感内容
 # 路径配置
+    #基础目录
 PLUGIN_DIR = os.path.join('data', 'plugins', 'astrbot_plugin_wealthandcontract')
-DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_data.yml')
-PROP_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_propdata.yml')
-SOCIAL_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_social_data.yml')  # 社交数据文件
-TIME_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_time_data.yml')  # 时间数据文件
+WAC_DATA_DIR= os.path.join('data', 'plugins_WealthAndContract_data')
+
+    #配置文件
+DATA_FILE = os.path.join(WAC_DATA_DIR, 'WAC_data.yml')
+PROP_DATA_FILE = os.path.join(WAC_DATA_DIR, 'WAC_propdata.yml')
+SOCIAL_DATA_FILE = os.path.join(WAC_DATA_DIR, 'WAC_social_data.yml')  # 社交数据文件
+TIME_DATA_FILE = os.path.join(WAC_DATA_DIR, 'WAC_time_data.yml')  # 时间数据文件
+STOCK_DATA_FILE = os.path.join(WAC_DATA_DIR, 'stock_data.yml')
+STOCK_USER_DATA_FILE = os.path.join(WAC_DATA_DIR, 'stock_user_data.yml')
+AUTH_DATA_FILE = os.path.join(WAC_DATA_DIR, 'WAC_auth_data.yml')
+BLACKLIST_DATA_FILE = os.path.join(WAC_DATA_DIR, 'blacklist_data.yml')
+ASSET_DATA_FILE = os.path.join(WAC_DATA_DIR, 'asset_data.yml')  # 资产数据文件路径
+CERTIFICATE_DATA_FILE = os.path.join(WAC_DATA_DIR, 'certificate_data.yml')  # 证件数据文件路径
+
+    #插件依赖
 IMAGE_DIR = os.path.join(PLUGIN_DIR, 'images')
 FONT_PATH = os.path.join(PLUGIN_DIR, '喵呜可爱字.ttf')
-STOCK_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'stock_data.yml')
-STOCK_USER_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'stock_user_data.yml')
+
+    #插件工作初始值
 STOCK_REFRESH_INTERVAL = 300    # 5分钟刷新一次股票
-AUTH_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'WAC_auth_data.yml')
-BLACKLIST_DATA_FILE = os.path.join('data', 'plugins_WealthAndContract_data', 'blacklist_data.yml')
 TRADING_HOURS = (8, 18)  # 交易时间：8:00-18:00
 
 # API配置
@@ -49,6 +59,45 @@ AUTH_LEVELS = {
     4: "数据管理员"
 }
 
+#region 资产与证件系统配置
+# 资产类型配置
+ASSET_TYPES = {
+    "房产": {
+        "碧桂园": {"price": 50000, "description": "普通住宅"},
+        "万科": {"price": 80000, "description": "中档住宅"},
+        "恒大": {"price": 120000, "description": "高档住宅"},
+        "汤臣一品": {"price": 500000, "description": "顶级豪宅"}
+    },
+    "车子": {
+        "比亚迪": {"price": 100000, "description": "经济型轿车"},
+        "丰田": {"price": 200000, "description": "中档轿车"},
+        "奔驰": {"price": 500000, "description": "豪华轿车"},
+        "保时捷": {"price": 1000000, "description": "跑车"},
+        "劳斯莱斯": {"price": 1500000, "description": "顶级豪车"}
+    }
+}
+
+# 证件类型配置
+CERTIFICATE_TYPES = {
+    "结婚证": {
+        "requirements": ["房产", "车子"],
+        "description": "证明夫妻关系的法律文件"
+    },
+    "房产证": {
+        "requirements": ["房产"],
+        "description": "证明房产所有权的法律文件"
+    },
+    "行驶证": {
+        "requirements": ["车子"],
+        "description": "证明车辆所有权的法律文件"
+    },
+    "离婚证": {
+        "requirements": ["结婚证"],
+        "description": "证明解除婚姻关系的法律文件"
+    }
+}
+
+#endregion
 
 # 经济系统配置
 WEALTH_LEVELS = [
@@ -606,17 +655,17 @@ SOCIAL_EVENTS = {
 
 # 时区配置
 SHANGHAI_TZ = pytz.timezone('Asia/Shanghai')
+#endregion
 
+#region ==================== ⚠️ 插件核心控件 ⚠️ ====================
 @register(
     "astrbot_plugin_WealthAndContract",
     "HINS",
     "集签到、契约、经济与社交系统于一体的群聊插件",
-    "1.3.1",
+    "1.3.5",
     "https://github.com/WUHINS/astrbot_plugin_WealthAndContract"
 )
-#endregion
 
-#region ==================== ⚠️ 插件核心控件 ⚠️ ====================
 class ContractSystem(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -630,6 +679,7 @@ class ContractSystem(Star):
         self._load_auth_data() #授权管理员数据
         self.task_token = str(uuid.uuid4()) #token令牌初始化
         self.blacklist_data = self._load_blacklist_data()   #黑名单数据
+        self.certificate_applications = {}  # 证件申请存储
 
         # 初始化股票系统
         self.stocks = {}
@@ -1284,6 +1334,46 @@ class ContractSystem(Star):
                 yaml.dump(self.blacklist_data, f, allow_unicode=True)
         except Exception as e:
             self._log_operation("error", f"保存黑名单数据失败: {str(e)}")
+    #endregion
+
+    #region 资产与证件控件
+    def _load_asset_data(self) -> dict:
+        """加载资产数据"""
+        if os.path.exists(ASSET_DATA_FILE):
+            try:
+                with open(ASSET_DATA_FILE, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                self._log_operation("error", f"加载资产数据失败: {str(e)}")
+                return {}
+        return {}
+
+    def _save_asset_data(self, data: dict):
+        """保存资产数据"""
+        try:
+            with open(ASSET_DATA_FILE, 'w', encoding='utf-8') as f:
+                yaml.dump(data, f, allow_unicode=True)
+        except Exception as e:
+            self._log_operation("error", f"保存资产数据失败: {str(e)}")
+
+    def _load_certificate_data(self) -> dict:
+        """加载证件数据"""
+        if os.path.exists(CERTIFICATE_DATA_FILE):
+            try:
+                with open(CERTIFICATE_DATA_FILE, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                self._log_operation("error", f"加载证件数据失败: {str(e)}")
+                return {}
+        return {}
+
+    def _save_certificate_data(self, data: dict):
+        """保存证件数据"""
+        try:
+            with open(CERTIFICATE_DATA_FILE, 'w', encoding='utf-8') as f:
+                yaml.dump(data, f, allow_unicode=True)
+        except Exception as e:
+            self._log_operation("error", f"保存证件数据失败: {str(e)}")
     #endregion
 
     async def terminate(self):
@@ -2223,13 +2313,212 @@ class ContractSystem(Star):
         
         return save_path
 
+    async def _generate_marriage_certificate(self, event, user_id1: str, user_name1: str, user_id2: str, user_name2: str, cert_id: str, cert_type: str) -> str:
+        """生成美观版结婚证/离婚证卡片"""
+        # 固定尺寸
+        width = 800
+        height = 600
+        
+        # 创建背景
+        try:
+            # 获取背景图
+            bg = await self._get_background(width, height)
+        except Exception:
+            # 使用纯色背景
+            bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景
+        
+        # 创建半透明遮罩
+        overlay = PILImage.new("RGBA", (width, height), (255, 255, 255, 180))  # 白色半透明
+        bg = PILImage.alpha_composite(bg.convert("RGBA"), overlay).convert("RGB")
+        
+        draw = ImageDraw.Draw(bg)
+        
+        # 加载字体
+        try:
+            title_font = ImageFont.truetype(FONT_PATH, 42)
+            name_font = ImageFont.truetype(FONT_PATH, 32)
+            info_font = ImageFont.truetype(FONT_PATH, 24)
+            small_font = ImageFont.truetype(FONT_PATH, 20)
+        except:
+            # 使用默认字体
+            title_font = ImageFont.load_default()
+            name_font = ImageFont.load_default()
+            info_font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
+        
+        # 绘制标题
+        title = cert_type
+        text_bbox = title_font.getbbox(title)
+        title_width = text_bbox[2] - text_bbox[0]
+        draw.text(
+            ((width - title_width) // 2, 30), 
+            title, 
+            font=title_font, 
+            fill="#8B0000" if cert_type == "结婚证" else "#00008B",  # 深红/深蓝
+            stroke_width=1,
+            stroke_fill="#FFFFFF"
+        )
+        
+        # 绘制副标题
+        subtitle = "银河月老集团署"
+        text_bbox = name_font.getbbox(subtitle)
+        subtitle_width = text_bbox[2] - text_bbox[0]
+        draw.text(
+            ((width - subtitle_width) // 2, 85), 
+            subtitle, 
+            font=name_font, 
+            fill="#8B0000" if cert_type == "结婚证" else "#00008B"
+        )
+        
+        # 创建左右两个大框（半透明圆角）
+        box_width = (width - 100) // 2 - 10
+        box_height = 300
+        box_y = 130
+        
+        # 创建圆角矩形函数
+        def rounded_rectangle(draw, box, radius, fill=None, outline=None, width=1):
+            """绘制圆角矩形"""
+            x1, y1, x2, y2 = box
+            draw.rectangle([x1, y1 + radius, x2, y2 - radius], fill=fill, outline=outline, width=width)
+            draw.rectangle([x1 + radius, y1, x2 - radius, y2], fill=fill, outline=outline, width=width)
+            draw.pieslice([x1, y1, x1 + 2*radius, y1 + 2*radius], 180, 270, fill=fill, outline=outline)
+            draw.pieslice([x2 - 2*radius, y1, x2, y1 + 2*radius], 270, 360, fill=fill, outline=outline)
+            draw.pieslice([x1, y2 - 2*radius, x1 + 2*radius, y2], 90, 180, fill=fill, outline=outline)
+            draw.pieslice([x2 - 2*radius, y2 - 2*radius, x2, y2], 0, 90, fill=fill, outline=outline)
+        
+        # 左侧框 - 用户1
+        box1 = (50, box_y, 50 + box_width, box_y + box_height)
+        rounded_rectangle(draw, box1, 20, fill=(255, 255, 255, 180), outline="#8B0000" if cert_type == "结婚证" else "#00008B", width=2)
+        
+        # 右侧框 - 用户2
+        box2 = (width - 50 - box_width, box_y, width - 50, box_y + box_height)
+        rounded_rectangle(draw, box2, 20, fill=(255, 255, 255, 180), outline="#8B0000" if cert_type == "结婚证" else "#00008B", width=2)
+        
+        # 获取双方头像
+        avatar1 = await self._get_avatar(user_id1)
+        avatar2 = await self._get_avatar(user_id2)
+        
+        # 头像尺寸
+        avatar_size = 120
+        
+        # 绘制左侧头像和名字
+        if avatar1:
+            # 创建圆形头像
+            avatar1 = avatar1.resize((avatar_size, avatar_size))
+            mask = PILImage.new('L', (avatar_size, avatar_size), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+            
+            # 粘贴头像
+            bg.paste(avatar1, (50 + (box_width - avatar_size) // 2, box_y + 30), mask)
+        
+        # 绘制左侧名字
+        name1_bbox = name_font.getbbox(user_name1)
+        name1_width = name1_bbox[2] - name1_bbox[0]
+        draw.text(
+            (50 + (box_width - name1_width) // 2, box_y + 170), 
+            user_name1, 
+            font=name_font, 
+            fill="#000000"
+        )
+        
+        # 绘制右侧头像和名字
+        if avatar2:
+            # 创建圆形头像
+            avatar2 = avatar2.resize((avatar_size, avatar_size))
+            mask = PILImage.new('L', (avatar_size, avatar_size), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+            
+            # 粘贴头像
+            bg.paste(avatar2, (width - 50 - box_width + (box_width - avatar_size) // 2, box_y + 30), mask)
+        
+        # 绘制右侧名字
+        name2_bbox = name_font.getbbox(user_name2)
+        name2_width = name2_bbox[2] - name2_bbox[0]
+        draw.text(
+            (width - 50 - box_width + (box_width - name2_width) // 2, box_y + 170), 
+            user_name2, 
+            font=name_font, 
+            fill="#000000"
+        )
+        
+        # 绘制中间连接符
+        if cert_type == "结婚证":
+            symbol = "❤"
+            symbol_color = "#FF0000"
+        else:
+            symbol = "✖"
+            symbol_color = "#000000"
+        
+        symbol_bbox = title_font.getbbox(symbol)
+        symbol_width = symbol_bbox[2] - symbol_bbox[0]
+        draw.text(
+            ((width - symbol_width) // 2, box_y + box_height // 2 - 15), 
+            symbol, 
+            font=title_font, 
+            fill=symbol_color
+        )
+        
+        # 底部信息条
+        info_bar_y = box_y + box_height + 30
+        info_bar_height = 60
+        
+        # 创建圆角信息条
+        info_box = (50, info_bar_y, width - 50, info_bar_y + info_bar_height)
+        rounded_rectangle(draw, info_box, 10, fill=(255, 255, 255, 200), outline="#8B0000" if cert_type == "结婚证" else "#00008B", width=1)
+        
+        # 证件信息
+        issue_date = datetime.now(SHANGHAI_TZ).strftime("%Y-%m-%d")
+        info_text = f"证件ID: {cert_id} | 发证日期: {issue_date}"
+        
+        # 绘制证件信息
+        info_bbox = info_font.getbbox(info_text)
+        info_width = info_bbox[2] - info_bbox[0]
+        draw.text(
+            ((width - info_width) // 2, info_bar_y + (info_bar_height - info_bbox[3]) // 2), 
+            info_text, 
+            font=info_font, 
+            fill="#000000"
+        )
+        
+        # 底部状态信息
+        status_y = info_bar_y + info_bar_height + 15
+        status_text = "有效" if cert_type == "结婚证" else "失效"
+        status_bbox = info_font.getbbox(status_text)
+        status_width = status_bbox[2] - status_bbox[0]
+        draw.text(
+            ((width - status_width) // 2, status_y), 
+            status_text, 
+            font=info_font, 
+            fill="#8B0000" if cert_type == "结婚证" else "#00008B"
+        )
+        
+        # 版权信息
+        copyright_text = "by HINS"
+        copyright_bbox = small_font.getbbox(copyright_text)
+        draw.text(
+            (width - copyright_bbox[2] - 20, height - 30), 
+            copyright_text, 
+            font=small_font, 
+            fill="#666666"
+        )
+        
+        # 保存图片
+        filename = f"{cert_type}_{cert_id}.png"
+        save_path = os.path.join(IMAGE_DIR, filename)
+        bg.save(save_path)
+        
+        return save_path
+
     #endregion
 
     #region 清理任务扩展
     async def _clean_expired_invitations(self, token: str):
-        """定期清理过期的约会和社交邀请"""
+        """定期清理过期的约会、社交邀请和证件申请"""
         while True:
             try:
+                # 检查任务令牌
                 if token != self.task_token:
                     self._log_operation("info", f"清理任务检测到令牌 {token} 失效，自动退出")
                     return
@@ -2253,7 +2542,7 @@ class ContractSystem(Star):
                             del group_invites[target_id]
                             continue
                             
-                        # 检查是否过期
+                        # 检查是否过期（约会邀请有效期5分钟）
                         if current_time - invite['created_at'] > timedelta(minutes=5):
                             del group_invites[target_id]
                     
@@ -2278,13 +2567,46 @@ class ContractSystem(Star):
                             del group_invites[target_id]
                             continue
                             
-                        # 检查是否过期
+                        # 检查是否过期（社交邀请有效期10分钟）
                         if current_time - invite['created_at'] > timedelta(minutes=10):
                             del group_invites[target_id]
                     
                     # 清理空群组
                     if not group_invites:
                         del self.social_invitations[group_id_str]
+                
+                # 清理过期证件申请
+                for group_id_str in list(self.certificate_applications.keys()):
+                    group_applications = self.certificate_applications[group_id_str]
+                    
+                    # 确保是字典类型
+                    if not isinstance(group_applications, dict):
+                        del self.certificate_applications[group_id_str]
+                        continue
+                        
+                    for target_id in list(group_applications.keys()):
+                        application = group_applications[target_id]
+                        
+                        # 确保是字典且包含创建时间
+                        if not isinstance(application, dict) or 'created_at' not in application:
+                            del group_applications[target_id]
+                            continue
+                            
+                        # 检查是否过期（证件申请有效期10分钟）
+                        if current_time - application['created_at'] > timedelta(minutes=10):
+                            del group_applications[target_id]
+                    
+                    # 清理空群组
+                    if not group_applications:
+                        del self.certificate_applications[group_id_str]
+                
+                # 记录清理结果
+                self._log_operation("debug", 
+                    f"清理过期邀请完成: "
+                    f"约会邀请: {len(self.date_confirmations)}组, "
+                    f"社交邀请: {len(self.social_invitations)}组, "
+                    f"证件申请: {len(self.certificate_applications)}组"
+                )
                 
                 # 每5分钟清理一次
                 await asyncio.sleep(300)
@@ -2293,6 +2615,7 @@ class ContractSystem(Star):
                 # 出错时重置数据结构
                 self.date_confirmations = {}
                 self.social_invitations = {}
+                self.certificate_applications = {}
                 await asyncio.sleep(60)
     #endregion    
 
@@ -2411,6 +2734,92 @@ class ContractSystem(Star):
                 self._log_operation("error", f"刷新股票价格失败: {str(e)}")
                 await asyncio.sleep(60)  # 出错后等待1分钟
         #endregion
+
+    #region 定期公司数据组件
+    async def _trigger_company_events(self, token: str):
+        """每天触发公司事件（早8点到晚8点）"""
+        while token == self.task_token:
+            now = datetime.now(SHANGHAI_TZ)
+            # 检查是否在事件触发时间段（8:00-20:00）
+            if 8 <= now.hour < 20:
+                for company_id, company in self.company_data.items():
+                    # 30%概率触发事件
+                    if random.random() < COMPANY_CONFIG["event_probability"]:
+                        # 随机选择事件类型（正面或负面）
+                        event_type = "positive" if random.random() < 0.6 else "negative"
+                        event = random.choice(COMPANY_EVENTS[event_type])
+                        
+                        # 计算影响幅度
+                        impact_range = event["impact"]
+                        impact_percent = random.uniform(impact_range[0], impact_range[1])
+                        
+                        # 更新公司市值
+                        current_value = company["market_value"]
+                        new_value = current_value * (1 + impact_percent)
+                        company["market_value"] = max(1000000, new_value)  # 最低100万市值
+                        
+                        # 记录事件
+                        event_record = {
+                            "time": now.isoformat(),
+                            "name": event["name"],
+                            "description": event["description"].format(impact=impact_percent*100),
+                            "impact_percent": impact_percent,
+                            "old_value": current_value,
+                            "new_value": company["market_value"]
+                        }
+                        company["events"].append(event_record)
+                        
+                        # 检查是否解散公司
+                        if company["market_value"] < company["register_capital"] * COMPANY_CONFIG["dissolve_threshold"]:
+                            # 解散公司
+                            self._dissolve_company(company_id)
+                            self._log_operation("info", f"公司解散: {company_id} 因市值低于阈值")
+                        else:
+                            self._log_operation("info", f"公司事件: {company_id} - {event['name']}, 市值变化: {impact_percent*100:.2f}%")
+                
+                # 保存数据
+                self._save_company_data()
+            
+            # 每小时检查一次
+            await asyncio.sleep(3600)
+    
+    async def _pay_company_salaries(self, token: str):
+        """每天发放公司工资（晚8点）"""
+        while token == self.task_token:
+            now = datetime.now(SHANGHAI_TZ)
+            # 检查是否是晚上8点
+            if now.hour == 20 and now.minute < 10:  # 10分钟窗口期
+                for company_id, company in self.company_data.items():
+                    total_salary = 0
+                    # 计算公司总工资
+                    for group_id, employees in company["employees"].items():
+                        for employee_id, employee_info in employees.items():
+                            # 获取职位工资乘数
+                            position = employee_info.get("position", "普通员工")
+                            multiplier = COMPANY_CONFIG["position_salary_multipliers"].get(position, 1.0)
+                            
+                            # 计算工资 = 公司市值 * 工资比例 * 职位乘数
+                            salary = company["market_value"] * COMPANY_CONFIG["salary_percentage"] * multiplier
+                            total_salary += salary
+                            
+                            # 添加到员工银行账户
+                            user_data = self._get_user_data(group_id, employee_id)
+                            user_data["bank"] += salary
+                            self._save_user_data(group_id, employee_id, user_data)
+                    
+                    # 记录工资发放
+                    company["last_salary_date"] = now.date().isoformat()
+                    company["last_salary_amount"] = total_salary
+                    self._log_operation("info", f"公司工资发放: {company_id}, 总额: {total_salary:.2f}金币")
+                
+                # 保存数据
+                self._save_company_data()
+                self._save_data(self.data)  # 保存用户数据
+            
+            # 每小时检查一次
+            await asyncio.sleep(3600)
+    #endregion
+
 #endregion
 
 #region ==================== 契约系统 ====================
@@ -3284,6 +3693,36 @@ class ContractSystem(Star):
 - 2%中奖概率，奖金1500-50000金币
 - 总资产超过500金币禁止购买
 - 拥有3个或以上性奴禁止购买
+
+==============【证件系统】==============
+/申请证件 <证件名> @对方
+- 申请证件（如结婚证、房产证等）
+- 示例: /申请证件 结婚证 @对方
+====================
+/同意证件 <验证码>
+- 同意证件申请
+- 示例: /同意证件 1234
+====================
+/我的证件
+- 列出我的所有证件
+- 显示证件ID和状态
+====================
+/展示证件 <证件ID>
+- 展示证件详情（精美图片）
+- 示例: /展示证件 marriage_1234567890
+
+==============【资产系统】==============
+/购入资产 <资产名>
+- 购买房产、车子等资产
+- 示例: /购入资产 汤臣一品
+====================
+/卖出资产 <资产名>
+- 出售资产
+- 示例: /卖出资产 劳斯莱斯
+====================
+/我的资产
+- 列出我的所有资产
+- 显示资产价值和类型
 
 ==============【其他命令】==============
 /WACadmin
@@ -6154,6 +6593,438 @@ class ContractSystem(Star):
         yield event.plain_result(response)
     #endregion
 
+    #region 证件系统
+    @filter.command("申请证件")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def apply_certificate(self, event: AstrMessageEvent):
+        """申请证件"""
+        # 黑名单检查
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        parts = event.message_str.strip().split()
+        if len(parts) < 3:
+            yield event.plain_result("❌ 格式错误，请使用：/申请证件 <证件名> @对方 哦~杂鱼酱❤~")
+            return
+        
+        cert_name = parts[1]
+        if cert_name not in CERTIFICATE_TYPES:
+            yield event.plain_result(f"❌ 未知证件类型，可用证件: {', '.join(CERTIFICATE_TYPES.keys())}")
+            return
+        
+        target_id = self._parse_at_target(event)
+        if not target_id:
+            yield event.plain_result("❌ 请@申请证件的对象哦~杂鱼酱❤~")
+            return
+        
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        
+        # 检查是否是自己
+        if user_id == target_id:
+            yield event.plain_result("❌ 不能对自己申请证件哦~大笨蛋杂鱼酱❤~")
+            return
+            
+        # 检查是否是机器人
+        if target_id == event.get_self_id():
+            yield event.plain_result("抱歉，妹妹不能申请证件哦~杂鱼酱❤~")
+            return
+        
+        # 获取用户数据
+        user_data = self._get_user_data(group_id, user_id)
+        target_data = self._get_user_data(group_id, target_id)
+        
+        # 检查关系（结婚证需要夫妻关系）
+        if cert_name == "结婚证":
+            relation = self.get_special_relation(group_id, user_id, target_id)
+            if relation != "夫妻":
+                yield event.plain_result("❌ 申请结婚证需要双方是夫妻关系哦~杂鱼酱❤~")
+                return
+        
+        # 检查资产要求
+        requirements = CERTIFICATE_TYPES[cert_name]["requirements"]
+        asset_data = self._load_asset_data()
+        user_assets = asset_data.get(group_id, {}).get(user_id, {})
+        
+        missing_assets = []
+        for asset_type in requirements:
+            if asset_type not in user_assets or not user_assets[asset_type]:
+                missing_assets.append(asset_type)
+        
+        if missing_assets:
+            yield event.plain_result(f"❌ 申请证件需要以下资产: {', '.join(missing_assets)}")
+            return
+        
+        # 生成唯一验证码
+        confirmation_code = str(random.randint(1000, 9999))
+        
+        # 存储证件申请
+        group_id_str = str(group_id)
+        if group_id_str not in self.certificate_applications:
+            self.certificate_applications[group_id_str] = {}
+            
+        self.certificate_applications[group_id_str][target_id] = {
+            "applicant_id": user_id,
+            "certificate_name": cert_name,
+            "confirmation_code": confirmation_code,
+            "created_at": datetime.now(SHANGHAI_TZ)
+        }
+        
+        target_name = await self._get_at_user_name(event, target_id)
+        yield event.plain_result(
+            f"📝 已向 {target_name} 发送 {cert_name} 申请!\n"
+            f"🔑 验证码: {confirmation_code}\n"
+            f"💖 请 {target_name} 使用命令同意申请: /同意证件 {confirmation_code}"
+        )
+
+    @filter.command("同意证件")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def accept_certificate(self, event: AstrMessageEvent):
+        """同意证件申请"""
+        # 黑名单检查
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用：/同意证件 <验证码>")
+            return
+        
+        confirmation_code = parts[1]
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        group_id_str = str(group_id)
+        
+        # 获取证件申请
+        if (group_id_str not in self.certificate_applications or 
+            user_id not in self.certificate_applications[group_id_str]):
+            yield event.plain_result("❌ 没有找到有效的证件申请")
+            return
+        
+        application = self.certificate_applications[group_id_str][user_id]
+        
+        # 检查验证码
+        if confirmation_code != application["confirmation_code"]:
+            yield event.plain_result("❌ 验证码错误！")
+            return
+        
+        # 检查申请是否过期（10分钟）
+        if datetime.now(SHANGHAI_TZ) - application["created_at"] > timedelta(minutes=10):
+            del self.certificate_applications[group_id_str][user_id]
+            yield event.plain_result("❌ 证件申请已过期")
+            return
+        
+        # 创建证件
+        applicant_id = application["applicant_id"]
+        cert_name = application["certificate_name"]
+        
+        # 获取证件数据
+        certificate_data = self._load_certificate_data()
+        group_certs = certificate_data.setdefault(group_id, {})
+        user_certs = group_certs.setdefault(user_id, {})
+        applicant_certs = group_certs.setdefault(applicant_id, {})
+        
+        # 生成证件ID
+        cert_id = f"{cert_name}_{int(time.time())}"
+        
+        # 创建证件信息
+        cert_info = {
+            "id": cert_id,
+            "type": cert_name,
+            "applicant": applicant_id,
+            "target": user_id,
+            "created_at": datetime.now(SHANGHAI_TZ).isoformat(),
+            "status": "有效"
+        }
+        
+        # 保存到双方证件列表
+        user_certs[cert_id] = cert_info
+        applicant_certs[cert_id] = cert_info
+        
+        # 保存数据
+        self._save_certificate_data(certificate_data)
+        
+        # 删除申请
+        del self.certificate_applications[group_id_str][user_id]
+        
+        applicant_name = await self._get_at_user_name(event, applicant_id)
+        user_name = await self._get_at_user_name(event, user_id)
+        yield event.plain_result(f"✅ {user_name} 已同意 {applicant_name} 的 {cert_name} 申请！证件ID: {cert_id}")
+
+    @filter.command("我的证件")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def list_my_certificates(self, event: AstrMessageEvent):
+        """列出我的证件"""
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        # 获取证件数据
+        certificate_data = self._load_certificate_data()
+        user_certs = certificate_data.get(group_id, {}).get(user_id, {})
+        
+        if not user_certs:
+            yield event.plain_result("📭 您目前没有任何证件哦~杂鱼酱❤~")
+            return
+        
+        response = "📋 您的证件列表:\n\n"
+        for cert_id, cert_info in user_certs.items():
+            response += f"【{cert_info['type']}】\n"
+            response += f"- ID: {cert_id}\n"
+            response += f"- 状态: {cert_info['status']}\n"
+            response += f"- 创建时间: {cert_info['created_at']}\n"
+            
+            if cert_info['type'] in ["结婚证", "离婚证"]:
+                other_id = cert_info['applicant'] if cert_info['target'] == user_id else cert_info['target']
+                other_name = await self._get_at_user_name(event, other_id)
+                response += f"- 对方: {other_name}\n"
+            
+            response += "\n"
+        
+        response += "使用 /展示证件 <证件ID> 查看证件详情"
+        yield event.plain_result(response)
+
+    @filter.command("展示证件")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def show_certificate(self, event: AstrMessageEvent):
+        """展示证件详情（图片）"""
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用：/展示证件 <证件ID>")
+            return
+        
+        cert_id = parts[1]
+        
+        # 获取证件数据
+        certificate_data = self._load_certificate_data()
+        user_certs = certificate_data.get(group_id, {}).get(user_id, {})
+        
+        if cert_id not in user_certs:
+            yield event.plain_result("❌ 未找到该证件，请检查证件ID")
+            return
+        
+        cert_info = user_certs[cert_id]
+        
+        # 检查证件状态（如果关系解除，自动转为离婚证）
+        if cert_info["type"] == "结婚证":
+            # 检查双方是否还是夫妻关系
+            other_id = cert_info['applicant'] if cert_info['target'] == user_id else cert_info['target']
+            relation = self.get_special_relation(group_id, user_id, other_id)
+            
+            if relation != "夫妻":
+                # 更新为离婚证
+                cert_info["type"] = "离婚证"
+                cert_info["status"] = "失效"
+                user_certs[cert_id] = cert_info
+                self._save_certificate_data(certificate_data)
+        
+        # 根据证件类型生成不同的图片
+        if cert_info["type"] in ["结婚证", "离婚证"]:
+            # 获取双方名称
+            applicant_id = cert_info['applicant']
+            target_id = cert_info['target']
+            
+            applicant_name = await self._get_at_user_name(event, applicant_id)
+            target_name = await self._get_at_user_name(event, target_id)
+            
+            # 生成结婚证/离婚证卡片
+            image_path = await self._generate_marriage_certificate(
+                event=event,
+                user_id1=applicant_id,
+                user_name1=applicant_name,
+                user_id2=target_id,
+                user_name2=target_name,
+                cert_id=cert_id,
+                cert_type=cert_info["type"]  # 添加证件类型参数
+            )
+        else:
+            # 其他证件使用通用生成方法
+            image_path = await self._generate_certificate_image(event, cert_info)
+        
+        yield event.image_result(image_path)
+
+    #endregion
+
+    #region 资产组件
+    @filter.command("购入资产")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def buy_asset(self, event: AstrMessageEvent):
+        """购入资产"""
+        # 黑名单检查
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用：/购入资产 <资产名> 哦~杂鱼酱❤~")
+            yield event.plain_result(f"可用资产类型: {', '.join(ASSET_TYPES.keys())}")
+            return
+        
+        asset_name = parts[1]
+        asset_type = None
+        asset_details = None
+        
+        # 查找匹配的资产
+        for asset_type_name, assets in ASSET_TYPES.items():
+            if asset_name in assets:
+                asset_type = asset_type_name
+                asset_details = assets[asset_name]
+                break
+        
+        if not asset_details:
+            yield event.plain_result(f"❌ 未知资产，可用资产: {', '.join([a for t in ASSET_TYPES.values() for a in t])}")
+            return
+        
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        user_data = self._get_user_data(group_id, user_id)
+        
+        # 检查金币是否足够
+        price = asset_details["price"]
+        if user_data["coins"] < price:
+            yield event.plain_result(f"❌ 需要 {price}金币，当前金币: {user_data['coins']:.1f}哦~穷鬼杂鱼酱❤~")
+            return
+        
+        # 扣除金币
+        user_data["coins"] -= price
+        
+        # 添加资产
+        asset_data = self._load_asset_data()
+        group_assets = asset_data.setdefault(group_id, {})
+        user_assets = group_assets.setdefault(user_id, {})
+        
+        if asset_type not in user_assets:
+            user_assets[asset_type] = []
+        
+        user_assets[asset_type].append(asset_name)
+        
+        # 保存数据
+        self._save_asset_data(asset_data)
+        self._save_user_data(group_id, user_id, user_data)
+        
+        yield event.plain_result(f"✅ 杂鱼酱❤~成功购买 {asset_name} ({asset_type})，消耗{price}金币")
+
+    @filter.command("卖出资产")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def sell_asset(self, event: AstrMessageEvent):
+        """卖出资产"""
+        # 黑名单检查
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        parts = event.message_str.strip().split()
+        if len(parts) < 2:
+            yield event.plain_result("❌ 格式错误，请使用：/卖出资产 <资产名> 哦~杂鱼酱❤~")
+            return
+        
+        asset_name = parts[1]
+        
+        # 获取资产数据
+        asset_data = self._load_asset_data()
+        group_assets = asset_data.get(group_id, {})
+        user_assets = group_assets.get(user_id, {})
+        
+        # 查找资产
+        asset_found = False
+        for asset_type, assets in user_assets.items():
+            if asset_name in assets:
+                # 移除资产
+                assets.remove(asset_name)
+                asset_found = True
+                
+                # 计算售价（原价的80%）
+                price = ASSET_TYPES[asset_type][asset_name]["price"]
+                sell_price = price * 0.8
+                
+                # 增加用户金币
+                user_data = self._get_user_data(group_id, user_id)
+                user_data["coins"] += sell_price
+                
+                # 保存数据
+                self._save_asset_data(asset_data)
+                self._save_user_data(group_id, user_id, user_data)
+                
+                yield event.plain_result(f"✅ 杂鱼酱❤~成功卖出 {asset_name}，获得{sell_price:.1f}金币")
+                return
+        
+        if not asset_found:
+            yield event.plain_result(f"❌ 未找到资产 {asset_name}，请检查资产名称")
+
+    @filter.command("我的资产")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def list_my_assets(self, event: AstrMessageEvent):
+        """列出我的资产"""
+        group_id = str(event.message_obj.group_id)
+        user_id = str(event.get_sender_id())
+        if self.is_user_blacklisted(group_id, user_id):
+            self._log_operation("info", 
+                f"忽略黑名单用户请求: group={group_id}, user={user_id}, "
+                f"message={event.message_str[:50]}"
+            )
+            return
+        
+        # 获取资产数据
+        asset_data = self._load_asset_data()
+        user_assets = asset_data.get(group_id, {}).get(user_id, {})
+        
+        if not user_assets:
+            yield event.plain_result("📭 您目前没有任何资产哦~杂鱼酱❤~")
+            return
+        
+        response = "🏠 您的资产列表:\n\n"
+        total_value = 0
+        
+        for asset_type, assets in user_assets.items():
+            if assets:  # 确保有资产
+                response += f"【{asset_type}】\n"
+                for asset_name in assets:
+                    price = ASSET_TYPES[asset_type][asset_name]["price"]
+                    total_value += price
+                    response += f"- {asset_name}: {price}金币\n"
+                response += "\n"
+        
+        response += f"💰 总资产价值: {total_value}金币"
+        yield event.plain_result(response)
+    #endregion
+
 #endregion
 
 #region ==================== 股票交易系统 ====================
@@ -7337,6 +8208,36 @@ class ContractSystem(Star):
         social_data[str(group_id)][str(target_id)] = target_data
         self._save_social_data(social_data)
     
+        # 检查是否有结婚证
+        certificate_data = self._load_certificate_data()
+        group_certs = certificate_data.get(group_id, {})
+        user_certs = group_certs.get(user_id, {})
+        target_certs = group_certs.get(target_id, {})
+        
+        # 查找双方的结婚证
+        marriage_cert_id = None
+        for cert_id, cert_info in user_certs.items():
+            if cert_info["type"] == "结婚证" and (
+                (cert_info["applicant"] == user_id and cert_info["target"] == target_id) or
+                (cert_info["applicant"] == target_id and cert_info["target"] == user_id)
+            ):
+                marriage_cert_id = cert_id
+                break
+        
+        # 如果找到结婚证，转为离婚证
+        if marriage_cert_id:
+            # 更新用户证件
+            user_certs[marriage_cert_id]["type"] = "离婚证"
+            user_certs[marriage_cert_id]["status"] = "失效"
+            
+            # 更新对方证件
+            if target_id in group_certs and marriage_cert_id in group_certs[target_id]:
+                group_certs[target_id][marriage_cert_id]["type"] = "离婚证"
+                group_certs[target_id][marriage_cert_id]["status"] = "失效"
+            
+            # 保存数据
+            self._save_certificate_data(certificate_data)
+
         # 记录日志
         self._log_operation("info", 
             f"移除所有关系: group={group_id}, user={user_id}, "

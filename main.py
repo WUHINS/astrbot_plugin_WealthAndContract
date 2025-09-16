@@ -282,13 +282,13 @@ JOBS = {
 #region 道具系统配置
 SHOP_ITEMS = {
     "驯服贴": {
-        "price": 1000,
+        "price": 10000,
         "description": "永久绑定性奴，防止被制裁/赎身/强制购买，超出限定名额额外费用公式: 2000 * 2 * (当前数量 + 1)",
         "type": "use",
         "command": "驯服贴"
     },
     "强制购买符": {
-        "price": 500,
+        "price": 5000,
         "description": "强制购买已有主人的性奴",
         "type": "use",
         "command": "强制购买符"
@@ -301,7 +301,7 @@ SHOP_ITEMS = {
         "command": "自由身保险"
     },
     "红星制裁": {
-        "price": 5,
+        "price": 50000,
         "description": "对全群满足条件的用户进行制裁（每人每天限用1次）",
         "type": "use",
         "command": "红星制裁"
@@ -1571,10 +1571,11 @@ class ContractSystem(Star):
                 # 处理背景图片
                 bg = PILImage.open(BytesIO(response.content))
                 
-                # 调整背景图尺寸，保持宽高比
-                bg_ratio = bg.width / bg.height
+                # 计算目标比例和原始比例
                 target_ratio = width / height
+                bg_ratio = bg.width / bg.height
                 
+                # 根据比例差异决定缩放方式
                 if bg_ratio > target_ratio:
                     # 背景图更宽，以高度为基准缩放
                     new_height = height
@@ -1584,17 +1585,23 @@ class ContractSystem(Star):
                     new_width = width
                     new_height = int(new_width / bg_ratio)
                 
-                bg = bg.resize((new_width, new_height))
+                # 调整背景图尺寸
+                bg = bg.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
                 
-                # 裁剪背景图居中部分
+                # 计算裁剪区域（确保居中）
                 left = (new_width - width) // 2
                 top = (new_height - height) // 2
                 right = left + width
                 bottom = top + height
-                return bg.crop((left, top, right, bottom))
+                
+                # 裁剪到目标尺寸
+                bg = bg.crop((left, top, right, bottom))
+                
+                return bg
         except Exception:
             # 使用纯色背景作为备选
-            return PILImage.new("RGB", (width, height), color="#D116B2")
+            return PILImage.new("RGB", (width, height), color="#F0F8FF")
+
     #endregion
 
     #region 卡片生成
@@ -1817,13 +1824,39 @@ class ContractSystem(Star):
         width = 1080
         height = 720
         
-        # 异步获取背景
+        # 异步获取背景（优化：等比缩放+居中裁剪避免变形）
         try:
             async with httpx.AsyncClient() as client:
                 bg_response = await client.get(self.BG_API, timeout=10)
-                bg = PILImage.open(BytesIO(bg_response.content)).resize((width, height))
+                bg = PILImage.open(BytesIO(bg_response.content))
+                
+                # 计算目标比例和原始图片比例
+                target_ratio = width / height  # 画布宽高比
+                bg_ratio = bg.width / bg.height  # 背景图宽高比
+                
+                # 根据比例差异决定缩放基准
+                if bg_ratio > target_ratio:
+                    # 背景图更宽，以画布高度为基准缩放，保证高度填满
+                    new_height = height
+                    new_width = int(new_height * bg_ratio)
+                else:
+                    # 背景图更高，以画布宽度为基准缩放，保证宽度填满
+                    new_width = width
+                    new_height = int(new_width / bg_ratio)
+                
+                # 高质量等比缩放（使用LANCZOS算法）
+                bg = bg.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                
+                # 计算居中裁剪区域（裁剪掉超出画布的部分）
+                left = (new_width - width) // 2
+                top = (new_height - height) // 2
+                right = left + width
+                bottom = top + height
+                
+                # 裁剪到目标画布尺寸
+                bg = bg.crop((left, top, right, bottom))
         except Exception:
-            bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景
+            bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景兜底
         
         def create_rounded_panel(size, color, radius=20):
             """创建圆角面板"""
@@ -1947,7 +1980,7 @@ class ContractSystem(Star):
             font=copyright_font,
             fill="#666666"
         )
-
+    
         # 保存图片
         filename = f"contract_{data['user_id']}.png"
         save_path = os.path.join(IMAGE_DIR, filename)
@@ -1965,9 +1998,36 @@ class ContractSystem(Star):
         try:
             async with httpx.AsyncClient() as client:
                 bg_response = await client.get(self.BG_API, timeout=10)
-                bg = PILImage.open(BytesIO(bg_response.content)).resize((width, height))
+                bg = PILImage.open(BytesIO(bg_response.content))
+                
+                # 计算目标比例和原始比例
+                target_ratio = width / height
+                bg_ratio = bg.width / bg.height
+                
+                # 根据比例差异决定缩放方式
+                if bg_ratio > target_ratio:
+                    # 背景图更宽，以高度为基准缩放
+                    new_height = height
+                    new_width = int(new_height * bg_ratio)
+                else:
+                    # 背景图更高，以宽度为基准缩放
+                    new_width = width
+                    new_height = int(new_width / bg_ratio)
+                
+                # 调整背景图尺寸
+                bg = bg.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                
+                # 计算裁剪区域（确保居中）
+                left = (new_width - width) // 2
+                top = (new_height - height) // 2
+                right = left + width
+                bottom = top + height
+                
+                # 裁剪到目标尺寸
+                bg = bg.crop((left, top, right, bottom))
         except Exception:
             bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景
+
         
         # 定义内部函数：创建圆角面板
         def create_rounded_panel(size, color, radius=20):
@@ -2095,14 +2155,45 @@ class ContractSystem(Star):
     
     async def _generate_contractor_leaderboard(self, **data) -> str:
         """异步生成性奴排行榜卡片"""
-        # 背景图处理
+        # 固定画布尺寸
+        width = 1080
+        height = 720
+        
+        # 异步获取背景
         try:
             async with httpx.AsyncClient() as client:
                 bg_response = await client.get(self.BG_API, timeout=10)
-                bg = PILImage.open(BytesIO(bg_response.content)).resize((1080, 720))
+                bg = PILImage.open(BytesIO(bg_response.content))
+                
+                # 计算目标比例和原始比例
+                target_ratio = width / height
+                bg_ratio = bg.width / bg.height
+                
+                # 根据比例差异决定缩放方式
+                if bg_ratio > target_ratio:
+                    # 背景图更宽，以高度为基准缩放
+                    new_height = height
+                    new_width = int(new_height * bg_ratio)
+                else:
+                    # 背景图更高，以宽度为基准缩放
+                    new_width = width
+                    new_height = int(new_width / bg_ratio)
+                
+                # 调整背景图尺寸
+                bg = bg.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                
+                # 计算裁剪区域（确保居中）
+                left = (new_width - width) // 2
+                top = (new_height - height) // 2
+                right = left + width
+                bottom = top + height
+                
+                # 裁剪到目标尺寸
+                bg = bg.crop((left, top, right, bottom))
         except Exception:
-            bg = PILImage.new("RGB", (1080, 720), color="#F0F8FF")  # 浅蓝色背景
-        
+            bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景
+
+        # 定义内部函数：创建圆角面板
         def create_rounded_panel(size, color, radius=20):
             """创建圆角面板"""
             panel = PILImage.new("RGBA", size, (0, 0, 0, 0))
@@ -2120,7 +2211,7 @@ class ContractSystem(Star):
         text_bbox = title_font.getbbox(title)
         title_width = text_bbox[2] - text_bbox[0]
         draw.text(
-            ((1080 - title_width) // 2, 30), 
+            ((width - title_width) // 2, 30), 
             title, 
             font=title_font, 
             fill="#FF69B4",  # 粉红色
@@ -2134,7 +2225,7 @@ class ContractSystem(Star):
         text_bbox = subtitle_font.getbbox(subtitle)
         subtitle_width = text_bbox[2] - text_bbox[0]
         draw.text(
-            ((1080 - subtitle_width) // 2, 90), 
+            ((width - subtitle_width) // 2, 90), 
             subtitle, 
             font=subtitle_font, 
             fill="#FFFFFF",
@@ -2148,9 +2239,9 @@ class ContractSystem(Star):
         
         # 表头
         header_font = ImageFont.truetype(FONT_PATH, 28)
-        draw.text((120, 170), "排名", font=header_font, fill="#8B0000")  # 深红色
-        draw.text((220, 170), "用户", font=header_font, fill="#8B0000")
-        draw.text((700, 170), "性奴数量", font=header_font, fill="#8B0000")
+        headers = [("排名", 120), ("用户", 220), ("性奴数量", 700)]
+        for text, x in headers:
+            draw.text((x, 170), text, font=header_font, fill="#8B0000")  # 深红色
         
         # 绘制分隔线
         draw.line([(100, 200), (980, 200)], fill="#8B0000", width=2)
@@ -2159,25 +2250,40 @@ class ContractSystem(Star):
         entry_font = ImageFont.truetype(FONT_PATH, 28)
         y_position = 220
         
+        # 排名颜色配置
+        rank_colors = {
+            1: ("#FFD700", "#FF4500"),    # 金色, 橙红色
+            2: ("#C0C0C0", "#FF6347"),    # 银色, 番茄红
+            3: ("#CD7F32", "#FF8C00")     # 古铜色, 深橙色
+        }
+        
         for rank, user_name, count in data['leaderboard']:
-            # 排名颜色（前三名特殊颜色）
-            if rank == 1:
-                rank_color = "#FFD700"  # 金色
-                count_color = "#FF4500"  # 橙红色
-            elif rank == 2:
-                rank_color = "#C0C0C0"  # 银色
-                count_color = "#FF6347"  # 番茄红
-            elif rank == 3:
-                rank_color = "#CD7F32"  # 古铜色
-                count_color = "#FF8C00"  # 深橙色
-            else:
-                rank_color = "#000000"  # 黑色
-                count_color = "#228B22"  # 森林绿
+            # 获取排名颜色
+            rank_color, count_color = rank_colors.get(rank, ("#000000", "#228B22"))
+            
+            # 创建条目背景面板（交替颜色）
+            bg_color = (255, 192, 203, 100) if rank % 2 == 0 else (255, 218, 224, 100)  # 粉色系交替
+            item_panel = create_rounded_panel((860, 45), bg_color, radius=10)
+            canvas.paste(item_panel, (110, y_position), item_panel)
             
             # 绘制条目
-            draw.text((120, y_position), f"{rank}", font=entry_font, fill=rank_color)
-            draw.text((220, y_position), user_name, font=entry_font, fill="#00008B")  # 深蓝色
-            draw.text((700, y_position), f"{count} 人", font=entry_font, fill=count_color)
+            draw.text((120, y_position + 10), str(rank), font=entry_font, fill=rank_color)
+            draw.text((220, y_position + 10), user_name, font=entry_font, fill="#00008B")  # 深蓝色
+            
+            # 性奴数量（前三名特殊显示）
+            if rank <= 3:
+                count_font = ImageFont.truetype(FONT_PATH, 32)
+            else:
+                count_font = entry_font
+            
+            count_text = f"{count} 人"
+            text_width = count_font.getlength(count_text)
+            draw.text(
+                (860 - text_width + 110 - 20, y_position + 10), 
+                count_text, 
+                font=count_font, 
+                fill=count_color
+            )
             
             y_position += 45
         
@@ -2190,7 +2296,7 @@ class ContractSystem(Star):
         copyright_text = "by HINS"
         text_bbox = copyright_font.getbbox(copyright_text)
         draw.text(
-            (1080 - text_bbox[2] - 20, 720 - text_bbox[3] - 10),
+            (width - text_bbox[2] - 20, height - text_bbox[3] - 10),
             copyright_text,
             font=copyright_font,
             fill="#666666"
@@ -2205,14 +2311,45 @@ class ContractSystem(Star):
 
     async def _generate_wealth_leaderboard(self, **data) -> str:
         """异步生成金币排行榜卡片"""
-        # 背景图处理
+        # 固定画布尺寸
+        width = 1080
+        height = 720
+        
+        # 异步获取背景
         try:
             async with httpx.AsyncClient() as client:
                 bg_response = await client.get(self.BG_API, timeout=10)
-                bg = PILImage.open(BytesIO(bg_response.content)).resize((1080, 720))
+                bg = PILImage.open(BytesIO(bg_response.content))
+                
+                # 计算目标比例和原始比例
+                target_ratio = width / height
+                bg_ratio = bg.width / bg.height
+                
+                # 根据比例差异决定缩放方式
+                if bg_ratio > target_ratio:
+                    # 背景图更宽，以高度为基准缩放
+                    new_height = height
+                    new_width = int(new_height * bg_ratio)
+                else:
+                    # 背景图更高，以宽度为基准缩放
+                    new_width = width
+                    new_height = int(new_width / bg_ratio)
+                
+                # 调整背景图尺寸
+                bg = bg.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                
+                # 计算裁剪区域（确保居中）
+                left = (new_width - width) // 2
+                top = (new_height - height) // 2
+                right = left + width
+                bottom = top + height
+                
+                # 裁剪到目标尺寸
+                bg = bg.crop((left, top, right, bottom))
         except Exception:
-            bg = PILImage.new("RGB", (1080, 720), color="#F0F8FF")  # 浅蓝色背景
-        
+            bg = PILImage.new("RGB", (width, height), color="#F0F8FF")  # 浅蓝色背景
+
+        # 定义内部函数：创建圆角面板
         def create_rounded_panel(size, color, radius=20):
             """创建圆角面板"""
             panel = PILImage.new("RGBA", size, (0, 0, 0, 0))
@@ -2230,7 +2367,7 @@ class ContractSystem(Star):
         text_bbox = title_font.getbbox(title)
         title_width = text_bbox[2] - text_bbox[0]
         draw.text(
-            ((1080 - title_width) // 2, 30), 
+            ((width - title_width) // 2, 30), 
             title, 
             font=title_font, 
             fill="#FFD700",  # 金色
@@ -2244,7 +2381,7 @@ class ContractSystem(Star):
         text_bbox = subtitle_font.getbbox(subtitle)
         subtitle_width = text_bbox[2] - text_bbox[0]
         draw.text(
-            ((1080 - subtitle_width) // 2, 90), 
+            ((width - subtitle_width) // 2, 90), 
             subtitle, 
             font=subtitle_font, 
             fill="#FFFFFF",
@@ -2258,9 +2395,9 @@ class ContractSystem(Star):
         
         # 表头
         header_font = ImageFont.truetype(FONT_PATH, 28)
-        draw.text((120, 170), "排名", font=header_font, fill="#8B0000")  # 深红色
-        draw.text((220, 170), "用户", font=header_font, fill="#8B0000")
-        draw.text((700, 170), "总资产", font=header_font, fill="#8B0000")
+        headers = [("排名", 120), ("用户", 220), ("总资产", 700)]
+        for text, x in headers:
+            draw.text((x, 170), text, font=header_font, fill="#8B0000")  # 深红色
         
         # 绘制分隔线
         draw.line([(100, 200), (980, 200)], fill="#8B0000", width=2)
@@ -2269,25 +2406,40 @@ class ContractSystem(Star):
         entry_font = ImageFont.truetype(FONT_PATH, 28)
         y_position = 220
         
+        # 排名颜色配置
+        rank_colors = {
+            1: ("#FFD700", "#FF4500"),    # 金色, 橙红色
+            2: ("#C0C0C0", "#FF6347"),    # 银色, 番茄红
+            3: ("#CD7F32", "#FF8C00")     # 古铜色, 深橙色
+        }
+        
         for rank, user_name, wealth in data['leaderboard']:
-            # 排名颜色（前三名特殊颜色）
-            if rank == 1:
-                rank_color = "#FFD700"  # 金色
-                wealth_color = "#FF4500"  # 橙红色
-            elif rank == 2:
-                rank_color = "#C0C0C0"  # 银色
-                wealth_color = "#FF6347"  # 番茄红
-            elif rank == 3:
-                rank_color = "#CD7F32"  # 古铜色
-                wealth_color = "#FF8C00"  # 深橙色
-            else:
-                rank_color = "#000000"  # 黑色
-                wealth_color = "#228B22"  # 森林绿
+            # 获取排名颜色
+            rank_color, wealth_color = rank_colors.get(rank, ("#000000", "#228B22"))
+            
+            # 创建条目背景面板（交替颜色）
+            bg_color = (220, 240, 255, 100) if rank % 2 == 0 else (240, 255, 240, 100)
+            item_panel = create_rounded_panel((860, 45), bg_color, radius=10)
+            canvas.paste(item_panel, (110, y_position), item_panel)
             
             # 绘制条目
-            draw.text((120, y_position), f"{rank}", font=entry_font, fill=rank_color)
-            draw.text((220, y_position), user_name, font=entry_font, fill="#00008B")  # 深蓝色
-            draw.text((700, y_position), f"{wealth:.1f} 金币", font=entry_font, fill=wealth_color)
+            draw.text((120, y_position + 10), str(rank), font=entry_font, fill=rank_color)
+            draw.text((220, y_position + 10), user_name, font=entry_font, fill="#00008B")  # 深蓝色
+            
+            # 财富金额（前三名特殊显示）
+            if rank <= 3:
+                wealth_font = ImageFont.truetype(FONT_PATH, 32)
+            else:
+                wealth_font = entry_font
+            
+            wealth_text = f"{wealth:.1f} 金币"
+            text_width = wealth_font.getlength(wealth_text)
+            draw.text(
+                (860 - text_width + 110 - 20, y_position + 10), 
+                wealth_text, 
+                font=wealth_font, 
+                fill=wealth_color
+            )
             
             y_position += 45
         
@@ -2300,7 +2452,7 @@ class ContractSystem(Star):
         copyright_text = "by HINS"
         text_bbox = copyright_font.getbbox(copyright_text)
         draw.text(
-            (1080 - text_bbox[2] - 20, 720 - text_bbox[3] - 10),
+            (width - text_bbox[2] - 20, height - text_bbox[3] - 10),
             copyright_text,
             font=copyright_font,
             fill="#666666"
@@ -9524,7 +9676,7 @@ class ContractSystem(Star):
                 response += "\n"
         else:
             response += "【拉黑的用户】\n- 暂无\n"
-        
+        _get_background
         # 生成图片
         image_paths = await self.text_to_images(
             text=response,

@@ -662,7 +662,7 @@ SHANGHAI_TZ = pytz.timezone('Asia/Shanghai')
     "astrbot_plugin_WealthAndContract",
     "HINS",
     "集签到、契约、经济与社交系统于一体的群聊插件",
-    "1.3.5",
+    "1.3.6",
     "https://github.com/WUHINS/astrbot_plugin_WealthAndContract"
 )
 

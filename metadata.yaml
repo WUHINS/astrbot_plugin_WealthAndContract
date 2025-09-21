@@ -1,5 +1,5 @@
 name: WealthAndContract # 这是你的插件的唯一识别名。
 desc: 一款专为AstrBot设计的群聊插件，融合了经济系统、契约系统、道具系统、社交系统以及股票交易系统，为群聊提供丰富的互动玩法。 # 插件简短描述
-version: v1.3.5 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v1.3.6 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: HINS # 作者
 repo: https://github.com/WUHINS/astrbot_plugin_WealthAndContract # 插件的仓库地址

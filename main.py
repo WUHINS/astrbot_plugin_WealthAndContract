@@ -295,13 +295,13 @@ SHOP_ITEMS = {
     },
     "自由身保险": {
         "price": 800,
-        "description": "24小时内不被购买为性奴",
-        "duration_hours": 24,
+        "description": "3小时内不被购买为性奴",
+        "duration_hours": 3,
         "type": "use",
         "command": "自由身保险"
     },
     "红星制裁": {
-        "price": 50000,
+        "price": 500,
         "description": "对全群满足条件的用户进行制裁（每人每天限用1次）",
         "type": "use",
         "command": "红星制裁"
